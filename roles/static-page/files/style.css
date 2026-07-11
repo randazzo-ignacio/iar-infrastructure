@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
-   i.ar — Professional landing page
-   Clean, modern, enterprise-ready design
+   i.ar — Free software landing page
+   Clean, modern, honest design
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Reset & Base ─────────────────────────────────────────── */
@@ -342,7 +342,9 @@ section:nth-child(even) {
 }
 
 .trust-icon {
-    font-size: 1.1rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent);
 }
 
 /* ── Section Headers ──────────────────────────────────────── */
@@ -375,65 +377,52 @@ section:nth-child(even) {
     margin: 0 auto;
 }
 
-/* ── Services ─────────────────────────────────────────────── */
-.services-grid {
+/* ── About ───────────────────────────────────────────────── */
+.about-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 64px;
+    align-items: start;
 }
 
-.service-card {
+.about-text {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.8;
+}
+
+.about-text p {
+    margin-bottom: 20px;
+}
+
+.about-features {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.feature-item {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 32px;
-    transition: border-color var(--transition), transform var(--transition);
+    padding: 24px;
+    transition: border-color var(--transition);
 }
 
-.service-card:hover {
+.feature-item:hover {
     border-color: var(--border-light);
-    transform: translateY(-2px);
 }
 
-.service-number {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
-    color: var(--accent);
-    margin-bottom: 16px;
-}
-
-.service-card h3 {
-    font-size: 1.3rem;
+.feature-item h3 {
+    font-size: 1.05rem;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    color: var(--text);
 }
 
-.service-card > p {
-    color: var(--text-muted);
-    margin-bottom: 20px;
-    font-size: 0.95rem;
-}
-
-.service-features {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.service-features li {
-    color: var(--text-muted);
+.feature-item p {
     font-size: 0.9rem;
-    padding-left: 24px;
-    position: relative;
-}
-
-.service-features li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
-    color: var(--accent);
-    font-weight: 700;
+    color: var(--text-muted);
 }
 
 /* ── Architecture ─────────────────────────────────────────── */
@@ -466,7 +455,9 @@ section:nth-child(even) {
 }
 
 .arch-icon {
-    font-size: 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 1.2rem;
+    color: var(--accent);
     margin-bottom: 12px;
 }
 
@@ -519,127 +510,138 @@ section:nth-child(even) {
     line-height: 1.6;
 }
 
-/* ── Use Cases ────────────────────────────────────────────── */
-.use-cases-grid {
+/* ── Philosophy ───────────────────────────────────────────── */
+.philosophy-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 24px;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
-.use-case {
+.philosophy-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 32px;
-    text-align: center;
-    transition: border-color var(--transition), transform var(--transition);
+    transition: border-color var(--transition);
 }
 
-.use-case:hover {
+.philosophy-card:hover {
     border-color: var(--border-light);
-    transform: translateY(-2px);
 }
 
-.use-case-icon {
-    font-size: 2.5rem;
-    margin-bottom: 16px;
-}
-
-.use-case h3 {
+.philosophy-card h3 {
     font-size: 1.15rem;
     font-weight: 600;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    color: var(--accent);
 }
 
-.use-case p {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-/* ── Pricing ─────────────────────────────────────────────── */
-.pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    max-width: 1000px;
-    margin: 0 auto;
-}
-
-.pricing-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 36px 28px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    transition: border-color var(--transition), transform var(--transition);
-}
-
-.pricing-card:hover {
-    border-color: var(--border-light);
-}
-
-.pricing-card--featured {
-    border-color: var(--accent);
-    transform: scale(1.03);
-}
-
-.pricing-card--featured:hover {
-    transform: scale(1.03) translateY(-2px);
-}
-
-.pricing-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--accent);
-    color: var(--bg);
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 4px 16px;
-    border-radius: 100px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.pricing-card h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 16px;
-}
-
-.price-desc {
+.philosophy-card p {
     font-size: 0.95rem;
     color: var(--text-muted);
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
+    line-height: 1.7;
 }
 
-.pricing-features {
-    list-style: none;
+/* ── Get Started ──────────────────────────────────────────── */
+.getting-started {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 64px;
+    align-items: start;
+}
+
+.steps {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-bottom: 28px;
+    gap: 24px;
+}
+
+.step {
+    display: flex;
+    gap: 20px;
+    align-items: start;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: var(--accent);
+    color: var(--bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.step-content {
     flex: 1;
 }
 
-.pricing-features li {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-    padding-left: 24px;
-    position: relative;
+.step-content h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 
-.pricing-features li::before {
-    content: "✓";
-    position: absolute;
-    left: 0;
+.step-content p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.step-content pre {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    overflow-x: auto;
+    margin-top: 4px;
+}
+
+.step-content code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
     color: var(--accent);
-    font-weight: 700;
+}
+
+.step-content kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text);
+}
+
+.resources {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+}
+
+.resources h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.resources ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.resources a {
+    font-size: 0.95rem;
 }
 
 /* ── Tech Stack ──────────────────────────────────────────── */
@@ -674,124 +676,6 @@ section:nth-child(even) {
 .stack-desc {
     font-size: 0.78rem;
     color: var(--text-dim);
-}
-
-/* ── Contact ─────────────────────────────────────────────── */
-.contact-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 64px;
-    align-items: start;
-}
-
-.contact-info h2 {
-    font-size: clamp(1.75rem, 3vw, 2.5rem);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin: 12px 0 20px;
-    line-height: 1.2;
-}
-
-.contact-info > p {
-    color: var(--text-muted);
-    margin-bottom: 32px;
-    font-size: 1.05rem;
-}
-
-.contact-details {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.contact-item {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.contact-label {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.contact-item a {
-    font-size: 1rem;
-    color: var(--text);
-    font-family: var(--font-mono);
-}
-
-.contact-item a:hover {
-    color: var(--accent);
-}
-
-/* ── Contact Form ─────────────────────────────────────────── */
-.contact-form-wrapper {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 36px;
-}
-
-.contact-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.form-group label {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-muted);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    padding: 12px 16px;
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 0.95rem;
-    transition: border-color var(--transition);
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-}
-
-.form-group select {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239999a3' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 16px center;
-    padding-right: 40px;
-}
-
-.form-note {
-    font-size: 0.85rem;
-    color: var(--accent);
-    min-height: 1.2em;
-    text-align: center;
 }
 
 /* ── Footer ───────────────────────────────────────────────── */
@@ -903,38 +787,26 @@ section:nth-child(even) {
         display: flex;
     }
 
-    .services-grid {
+    .about-grid {
         grid-template-columns: 1fr;
+        gap: 32px;
     }
 
     .security-grid {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .use-cases-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .pricing-grid {
+    .philosophy-grid {
         grid-template-columns: 1fr;
-        max-width: 450px;
     }
 
-    .pricing-card--featured {
-        transform: none;
-    }
-
-    .pricing-card--featured:hover {
-        transform: translateY(-2px);
+    .getting-started {
+        grid-template-columns: 1fr;
+        gap: 32px;
     }
 
     .stack-grid {
         grid-template-columns: repeat(3, 1fr);
-    }
-
-    .contact-wrapper {
-        grid-template-columns: 1fr;
-        gap: 48px;
     }
 
     .footer-content {
@@ -956,8 +828,7 @@ section:nth-child(even) {
         font-size: 1.5rem;
     }
 
-    .security-grid,
-    .use-cases-grid {
+    .security-grid {
         grid-template-columns: 1fr;
     }
 
