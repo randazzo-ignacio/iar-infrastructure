@@ -6,7 +6,7 @@ After=network-online.target
 [Service]
 Type=oneshot
 User={{ local_ssh_user | default('nacho') }}
-ExecStart={{ iar_repo_dir }}/utils/iar.sh --loop \
+ExecStart=/bin/bash {{ iar_repo_dir }}/utils/iar.sh --loop \
   --personalization {{ iar_personalization_dir }} \
   --agent {{ item.name }} \
   --max-cycles 1 \
