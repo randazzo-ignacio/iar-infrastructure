@@ -5,14 +5,14 @@
 
 # ── Repository paths ───────────────────────────────────────
 # Where to clone the i.ar repo and personalization repo.
-iar_repo_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/i.ar"
-iar_personalization_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/iar-personalization"
-iar_gptel_fork_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/gptel"
+iar_repo_dir: "~{{ local_ssh_user | default('nacho') }}/repos/i.ar"
+iar_personalization_dir: "~{{ local_ssh_user | default('nacho') }}/repos/iar-personalization"
+iar_gptel_fork_dir: "~{{ local_ssh_user | default('nacho') }}/repos/gptel"
 
 # ── Git remotes (emacboros forks) ───────────────────────────
 iar_repo_remote: "git@github.com:emacboros/i.ar.git"
 iar_personalization_remote: "git@github.com:emacboros/iar-personalization.git"
-iar_gptel_fork_remote: "https://github.com/emacboros/gptel.git"
+iar_gptel_fork_remote: "https://github.com/randazzo-ignacio/gptel.git"
 
 # ── Ollama connection ──────────────────────────────────────
 # Default to sophon's WireGuard IP. Override per-host if needed.

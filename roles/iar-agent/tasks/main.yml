@@ -42,7 +42,6 @@
   git:
     repo: "{{ iar_gptel_fork_remote }}"
     dest: "{{ iar_gptel_fork_dir }}"
-    version: main
   become_user: "{{ local_ssh_user | default('nacho') }}"
   register: iar_gptel_clone
 
