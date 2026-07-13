@@ -50,6 +50,14 @@
     path: "{{ iar_repo_dir }}/utils/iar.sh"
     mode: '0755'
 
+- name: Deploy telegram.sh with credentials
+  template:
+    src: telegram.sh.j2
+    dest: "{{ iar_repo_dir }}/utils/telegram.sh"
+    owner: "{{ local_ssh_user | default('nacho') }}"
+    group: "{{ local_ssh_user | default('nacho') }}"
+    mode: '0644'
+
 # ════════════════════════════════════════════════════════════
 # 2. Personalization directory structure
 # ════════════════════════════════════════════════════════════

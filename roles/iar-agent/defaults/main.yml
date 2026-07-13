@@ -29,5 +29,11 @@ iar_agents:
     interval: "30min"
     timeout: 3600
 
+# ── Telegram notifications ─────────────────────────────────
+# Credentials for agent Telegram notifications.
+# Override in vault.yml -- do NOT commit real tokens.
+iar_telegram_bot_token: "REPLACE_IN_VAULT"
+iar_telegram_chat_id: "REPLACE_IN_VAULT"
+
 # ── Container image ────────────────────────────────────────
 iar_container_image: "iar-emacboros"
