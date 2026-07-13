@@ -5,9 +5,10 @@
 
 # ── Repository paths ───────────────────────────────────────
 # Where to clone the i.ar repo and personalization repo.
-iar_repo_dir: "~{{ local_ssh_user | default('nacho') }}/repos/i.ar"
-iar_personalization_dir: "~{{ local_ssh_user | default('nacho') }}/repos/iar-personalization"
-iar_gptel_fork_dir: "~{{ local_ssh_user | default('nacho') }}/repos/gptel"
+# Must be absolute paths -- systemd does not expand ~user/.
+iar_repo_dir: "/var/home/nacho/repos/i.ar"
+iar_personalization_dir: "/var/home/nacho/repos/iar-personalization"
+iar_gptel_fork_dir: "/var/home/nacho/repos/gptel"
 
 # ── Git remotes (emacboros forks) ───────────────────────────
 iar_repo_remote: "git@github.com:emacboros/i.ar.git"

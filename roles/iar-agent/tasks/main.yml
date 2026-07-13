@@ -45,6 +45,11 @@
   become_user: "{{ local_ssh_user | default('nacho') }}"
   register: iar_gptel_clone
 
+- name: Ensure iar.sh is executable
+  file:
+    path: "{{ iar_repo_dir }}/utils/iar.sh"
+    mode: '0755'
+
 # ════════════════════════════════════════════════════════════
 # 2. Personalization directory structure
 # ════════════════════════════════════════════════════════════
@@ -109,7 +114,6 @@
     group: root
     mode: '0644'
   loop: "{{ iar_agents }}"
-  notify: reload systemd
 
 - name: Create systemd timer units for agents
   template:
@@ -119,12 +123,10 @@
     group: root
     mode: '0644'
   loop: "{{ iar_agents }}"
-  notify: reload systemd
 
 - name: Reload systemd daemon
   systemd:
     daemon_reload: true
-  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Enable and start agent timers
   systemd:
