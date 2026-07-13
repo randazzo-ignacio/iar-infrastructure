@@ -18,10 +18,11 @@ iar_personalization_remote: "git@github.com:emacboros/iar-personalization.git"
 iar_gptel_fork_remote: "https://github.com/randazzo-ignacio/gptel.git"
 
 # ── Ollama connection ──────────────────────────────────────
-# Default to sophon's WireGuard IP. Override per-host if needed.
+# Default to sophon's WireGuard IP with local GPU model.
+# Override per-host if needed.
 iar_ollama_host: "10.66.0.5:11434"
-iar_model: "glm-5.2:cloud"
-iar_ctx: 1048576
+iar_model: "nemotron-3-super:120b"
+iar_ctx: 131072
 
 # ── Agent configuration ─────────────────────────────────────
 # Which agents to deploy as systemd timers.
