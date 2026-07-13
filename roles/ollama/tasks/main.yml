@@ -98,6 +98,7 @@
       [Service]
       Environment="OLLAMA_HOST={{ ollama_listen }}:{{ ollama_port }}"
       Environment="OLLAMA_MODELS={{ ollama_models_dir }}"
+      Environment="OLLAMA_KEEP_ALIVE={{ ollama_keepalive }}"
     owner: root
     group: root
     mode: '0644'

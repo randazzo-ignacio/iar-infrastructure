@@ -11,3 +11,4 @@ ollama_user: ollama
 ollama_listen: "0.0.0.0"
 ollama_gpu: false
 ollama_models: []
+ollama_keepalive: "-1"
