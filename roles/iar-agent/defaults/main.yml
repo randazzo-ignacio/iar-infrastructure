@@ -6,9 +6,11 @@
 # ── Repository paths ───────────────────────────────────────
 # Where to clone the i.ar repo and personalization repo.
 # Must be absolute paths -- systemd does not expand ~user/.
-iar_repo_dir: "/var/home/nacho/repos/i.ar"
-iar_personalization_dir: "/var/home/nacho/repos/iar-personalization"
-iar_gptel_fork_dir: "/var/home/nacho/repos/gptel"
+# Default: /home/nacho (standard Fedora). Override in host_vars for
+# Silverblue hosts where home is /var/home.
+iar_repo_dir: "/home/nacho/repos/i.ar"
+iar_personalization_dir: "/home/nacho/repos/iar-personalization"
+iar_gptel_fork_dir: "/home/nacho/repos/gptel"
 
 # ── Git remotes (emacboros forks) ───────────────────────────
 iar_repo_remote: "git@github.com:emacboros/i.ar.git"
