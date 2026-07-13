@@ -16,8 +16,9 @@ ExecStart={{ iar_repo_dir }}/utils/iar.sh --loop \
   --ctx {{ iar_ctx }} \
   --gptel-fork {{ iar_gptel_fork_dir }}
 WorkingDirectory={{ iar_repo_dir }}
-StandardOutput=append:{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log
-StandardError=append:{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log
+# Log to journal -- the elisp cycle logger already writes to
+# audit/<agent>/cycle.log internally. View with:
+#   journalctl -u iar-{{ item.name }}.service
 TimeoutStartSec={{ item.timeout | default(3600) }}
 
 [Install]

@@ -83,6 +83,15 @@
     mode: '0755'
   loop: "{{ iar_agents }}"
 
+- name: Pre-create cycle.log files with correct ownership
+  file:
+    path: "{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log"
+    state: touch
+    owner: "{{ local_ssh_user | default('nacho') }}"
+    group: "{{ local_ssh_user | default('nacho') }}"
+    mode: '0644'
+  loop: "{{ iar_agents }}"
+
 - name: Ensure per-agent task directories exist
   file:
     path: "{{ iar_personalization_dir }}/tasks/{{ item.name }}"
