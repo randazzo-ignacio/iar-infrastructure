@@ -1,0 +1,15 @@
+---
+# playbooks/iar-agents.yml — Deploy i.ar agent infrastructure.
+# Clones repos, builds container image, installs systemd timers.
+#
+# Usage:
+#   ansible-playbook playbooks/iar-agents.yml --vault-password-file .vault_pass
+#   ansible-playbook playbooks/iar-agents.yml --vault-password-file .vault_pass --limit sophon
+
+- name: Deploy i.ar agent infrastructure
+  hosts: all
+  roles:
+    - role: podman
+      when: podman_enabled | default(false) | bool
+    - role: iar-agent
+      when: iar_agents_enabled | default(false) | bool

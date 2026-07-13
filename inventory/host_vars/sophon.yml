@@ -12,6 +12,19 @@ ollama_listen: "10.66.0.5"  # bind to WireGuard IP only
 # Podman (for GPU container support)
 podman_enabled: true
 
+# ── i.ar Agent Infrastructure ──────────────────────────────
+# Enables the iar-agent role in iar-agents.yml playbook.
+# Repos are cloned to /var/home/nacho/repos/{i.ar,iar-personalization,gptel}.
+# Systemd timers are created for each agent in iar_agents.
+iar_agents_enabled: true
+iar_ollama_host: "10.66.0.5:11434"
+iar_model: "glm-5.2:cloud"
+iar_ctx: 1048576
+iar_agents:
+  - name: librarian
+    interval: "30min"
+    timeout: 3600
+
 # ── Frigate NVR ────────────────────────────────────────────
 frigate_enabled: true
 

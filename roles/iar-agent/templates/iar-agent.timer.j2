@@ -1,0 +1,9 @@
+[Unit]
+Description=i.ar {{ item.name }} timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec={{ item.interval | default('30min') }}
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=i.ar {{ item.name }} agent
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User={{ local_ssh_user | default('nacho') }}
+ExecStart={{ iar_repo_dir }}/utils/iar.sh --loop \
+  --personalization {{ iar_personalization_dir }} \
+  --agent {{ item.name }} \
+  --max-cycles 1 \
+  --knowledge iar/ \
+  --ollama-host {{ iar_ollama_host }} \
+  --model {{ iar_model }} \
+  --ctx {{ iar_ctx }} \
+  --gptel-fork {{ iar_gptel_fork_dir }}
+WorkingDirectory={{ iar_repo_dir }}
+StandardOutput=append:{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log
+StandardError=append:{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log
+TimeoutStartSec={{ item.timeout | default(3600) }}
+
+[Install]
+WantedBy=multi-user.target

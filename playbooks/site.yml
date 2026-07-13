@@ -65,3 +65,11 @@
     - role: frigate
       when: frigate_enabled | default(false) | bool
       tags: [frigate]
+
+- name: i.ar Agent Infrastructure
+  hosts: all
+  roles:
+    - role: podman
+      when: podman_enabled | default(false) | bool
+    - role: iar-agent
+      when: iar_agents_enabled | default(false) | bool

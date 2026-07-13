@@ -1,0 +1,32 @@
+---
+# roles/iar-agent/defaults/main.yml
+# i.ar agent infrastructure defaults.
+# Override per-host in host_vars.
+
+# ── Repository paths ───────────────────────────────────────
+# Where to clone the i.ar repo and personalization repo.
+iar_repo_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/i.ar"
+iar_personalization_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/iar-personalization"
+iar_gptel_fork_dir: "/var/home/{{ local_ssh_user | default('nacho') }}/repos/gptel"
+
+# ── Git remotes (emacboros forks) ───────────────────────────
+iar_repo_remote: "git@github.com:emacboros/i.ar.git"
+iar_personalization_remote: "git@github.com:emacboros/iar-personalization.git"
+iar_gptel_fork_remote: "https://github.com/emacboros/gptel.git"
+
+# ── Ollama connection ──────────────────────────────────────
+# Default to sophon's WireGuard IP. Override per-host if needed.
+iar_ollama_host: "10.66.0.5:11434"
+iar_model: "glm-5.2:cloud"
+iar_ctx: 1048576
+
+# ── Agent configuration ─────────────────────────────────────
+# Which agents to deploy as systemd timers.
+# Each entry: name, interval (systemd OnUnitActiveSec), timeout
+iar_agents:
+  - name: librarian
+    interval: "30min"
+    timeout: 3600
+
+# ── Container image ────────────────────────────────────────
+iar_container_image: "iar-emacboros"
