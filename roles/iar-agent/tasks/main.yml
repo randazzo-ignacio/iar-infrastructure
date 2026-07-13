@@ -112,13 +112,20 @@
   changed_when: false
   failed_when: false
 
+- name: Debug image check result
+  debug:
+    msg: "Image exists check: rc={{ iar_image_check.rc }}, will build={{ iar_image_check.rc != 0 }}"
+
+- name: Ensure build.sh is executable
+  file:
+    path: "{{ iar_repo_dir }}/containers/build.sh"
+    mode: '0755'
+
 - name: Build i.ar container image
   command: >
-    {{ iar_repo_dir }}/containers/build.sh
+    /bin/bash {{ iar_repo_dir }}/containers/build.sh
   become_user: "{{ local_ssh_user | default('nacho') }}"
   when: iar_image_check.rc != 0
-  environment:
-    IMAGE_NAME: "{{ iar_container_image }}"
 
 # ════════════════════════════════════════════════════════════
 # 4. Systemd timers for agents
