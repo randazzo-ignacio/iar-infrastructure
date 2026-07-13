@@ -105,8 +105,9 @@
 # 3. Container image build
 # ════════════════════════════════════════════════════════════
 
-- name: Check if i.ar container image exists
+- name: Check if i.ar container image exists (as service user)
   command: podman image exists {{ iar_container_image }}
+  become_user: "{{ local_ssh_user | default('nacho') }}"
   register: iar_image_check
   changed_when: false
   failed_when: false
