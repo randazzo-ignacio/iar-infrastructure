@@ -1,2 +1,27 @@
+#!/usr/bin/env bash
+# telegram.sh -- Dual-purpose Telegram notification utility
+#
+# When sourced (no arguments): exports AGENT_TELEGRAM_* env vars.
+# When called with an argument: sends the argument as a Telegram message.
+#
+# Usage:
+#   source telegram.sh              # export credentials (host-side, sourced by iar.sh)
+#   telegram.sh "Your message here" # send a message (agent-side, called from container)
+#
+# Env vars must be set before calling with an argument. They are set by:
+#   - sourcing this script (hardcoded values below)
+#   - iar.sh passing them via -e flags into the container
+
 export AGENT_TELEGRAM_BOT_TOKEN="{{ iar_telegram_bot_token }}"
 export AGENT_TELEGRAM_CHAT_ID="{{ iar_telegram_chat_id }}"
+
+# If called with arguments, send the first argument as a Telegram message.
+if [[ $# -gt 0 ]]; then
+    curl -s -m 10 -X POST \
+        "https://api.telegram.org/bot${AGENT_TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -H "Content-Type: application/json" \
+        -d "$(jq -n --arg chat_id "$AGENT_TELEGRAM_CHAT_ID" \
+                   --arg text "$1" \
+                   '{chat_id: $chat_id, text: $text, parse_mode: "Markdown"}')" \
+        > /dev/null 2>&1 || true
+fi
