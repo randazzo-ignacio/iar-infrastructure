@@ -1,0 +1,41 @@
+# vault.yml.template
+# Copy to inventory/group_vars/all/vault.yml, fill in real values, encrypt with:
+#   ansible-vault encrypt inventory/group_vars/all/vault.yml --ask-vault-pass
+#
+# Every secret in the infrastructure is documented here.
+# If a new secret is added, add it here first.
+
+# ── WireGuard private keys (per host) ──────────────────────
+# Generate with: wg genkey | tee /tmp/<host>.key | wg pubkey > /tmp/<host>.pub
+wg_private_keys:
+  rammstein: "PRIVATE_KEY_HERE"
+  daftpunk: "PRIVATE_KEY_HERE"
+  greenday: "PRIVATE_KEY_HERE"
+  sophon: "PRIVATE_KEY_HERE"
+  yoga: "PRIVATE_KEY_HERE"
+
+# ── WireGuard public keys (per host) ───────────────────────
+# Derived from private keys: wg pubkey < /tmp/<host>.key
+wg_public_keys:
+  rammstein: "PUBLIC_KEY_HERE"
+  daftpunk: "PUBLIC_KEY_HERE"
+  greenday: "PUBLIC_KEY_HERE"
+  sophon: "PUBLIC_KEY_HERE"
+  yoga: "PUBLIC_KEY_HERE"
+
+# ── Grafana admin credentials ──────────────────────────────
+grafana_admin_password: "PASSWORD_HERE"
+
+# ── Frigate RTSP camera credentials ────────────────────────
+# Shared across all cameras (user/password in RTSP URLs)
+frigate_camera_rtsp_user: "CAMERA_USER_HERE"
+frigate_camera_rtsp_password: "CAMERA_PASSWORD_HERE"
+
+# ── AI agent SSH public key (greenday) ─────────────────────
+# The SSH key the AI agent uses for git operations
+ai_agent_ssh_public_key: "ssh-ed25519 AAAA... ai-agent"
+
+# ── i.ar agent Telegram notifications ──────────────────────
+# Bot token from @BotFather, chat ID from @userinfobot
+iar_telegram_bot_token: "BOT_TOKEN_HERE"
+iar_telegram_chat_id: "CHAT_ID_HERE"
