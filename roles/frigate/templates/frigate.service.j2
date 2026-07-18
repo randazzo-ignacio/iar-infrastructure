@@ -6,10 +6,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User={{ local_ssh_user }}
+User={{ ansible_user }}
 WorkingDirectory={{ frigate_base_dir }}
-ExecStart=/usr/bin/podman-compose up
-ExecStop=/usr/bin/podman-compose down
+ExecStart=/usr/bin/podman compose up
+ExecStop=/usr/bin/podman compose down
 Restart=always
 RestartSec=10
 TimeoutStopSec=45

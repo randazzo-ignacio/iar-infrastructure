@@ -6,8 +6,3 @@
     name: "{{ frigate_container_name }}"
     state: restarted
     daemon_reload: true
-
-- name: restart podman
-  service:
-    name: podman
-    state: restarted
