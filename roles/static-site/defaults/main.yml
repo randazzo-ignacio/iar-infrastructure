@@ -1,0 +1,12 @@
+---
+# roles/static-site/defaults/main.yml
+
+# Source directory (relative to role files/) -- REQUIRED
+static_site_src: ""
+
+# Destination path -- REQUIRED, set in host_vars
+static_site_dest: ""
+
+# File ownership (Caddy serves the files)
+static_site_owner: "caddy"
+static_site_group: "caddy"

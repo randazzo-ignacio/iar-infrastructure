@@ -1,0 +1,19 @@
+---
+# roles/static-site/tasks/main.yml
+# Deploys static site files to a web root. Caddy serves them via file_server.
+
+- name: Ensure web root exists
+  file:
+    path: "{{ static_site_dest }}"
+    state: directory
+    owner: "{{ static_site_owner }}"
+    group: "{{ static_site_group }}"
+    mode: '0755'
+
+- name: Deploy static files
+  copy:
+    src: "{{ static_site_src }}/"
+    dest: "{{ static_site_dest }}/"
+    owner: "{{ static_site_owner }}"
+    group: "{{ static_site_group }}"
+    mode: '0644'
