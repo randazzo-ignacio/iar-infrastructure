@@ -1,14 +1,18 @@
 ---
-# playbooks/monitoring.yml — Deploy only the monitoring stack.
-# Usage: ansible-playbook playbooks/monitoring.yml --vault-password-file .vault_pass
+# playbooks/monitoring.yml -- Deploy monitoring stack (Prometheus + Grafana).
+# Usage: ansible-playbook playbooks/monitoring.yml --ask-vault-pass
 
 - name: Node exporters (all hosts)
   hosts: all
+  become: true
   roles:
-    - node-exporter
+    - role: node-exporter
+      tags: [node-exporter]
 
-- name: Monitoring stack (daftpunk — Prometheus + Grafana)
-  hosts: daftpunk
+- name: Monitoring stack (Prometheus + Grafana)
+  hosts: monitoring
+  become: true
   roles:
-    - role: podman
-    - monitoring
+    - role: monitoring
+      when: monitoring_enabled | default(false) | bool
+      tags: [monitoring]

@@ -1,8 +1,14 @@
 ---
-# playbooks/portfolio-page.yml — Deploy only the personal portfolio.
-# Usage: ansible-playbook playbooks/portfolio-page.yml --vault-password-file .vault_pass
+# playbooks/portfolio-page.yml -- Deploy personal portfolio to rammstein.
+# Usage: ansible-playbook playbooks/portfolio-page.yml --ask-vault-pass
 
-- name: randazzo.ar — deploy portfolio page
-  hosts: rammstein
+- name: Deploy portfolio page
+  hosts: web_servers
+  become: true
   roles:
-    - portfolio-page
+    - role: static-site
+      vars:
+        static_site_src: "portfolio"
+        static_site_dest: "{{ portfolio_page_root }}"
+      when: portfolio_page_enabled | default(false) | bool
+      tags: [static-site]

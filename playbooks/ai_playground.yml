@@ -1,9 +1,12 @@
 ---
-# playbooks/ai_playground.yml — AI playground setup on ob-ar.
-# Usage: ansible-playbook playbooks/ai_playground.yml --vault-password-file .vault_pass
+# playbooks/ai_playground.yml -- AI playground setup on greenday.
+# Usage: ansible-playbook playbooks/ai_playground.yml --ask-vault-pass
 
 - name: Configure AI playground
   hosts: ai_playground
+  become: true
   roles:
-    - podman
-    - ai-environment
+    - role: podman
+      tags: [podman]
+    - role: ai-environment
+      tags: [ai-environment]

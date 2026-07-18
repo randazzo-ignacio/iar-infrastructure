@@ -1,0 +1,13 @@
+---
+# playbooks/nvidia.yml -- NVIDIA drivers and container toolkit on GPU hosts.
+# Usage: ansible-playbook playbooks/nvidia.yml --ask-vault-pass
+#
+# Two-run pattern: 1st run installs driver (needs reboot), 2nd run installs toolkit.
+# Must run before ollama and frigate on GPU hosts.
+
+- name: NVIDIA GPU drivers and toolkit
+  hosts: gpu_hosts
+  become: true
+  roles:
+    - role: nvidia
+      tags: [nvidia]

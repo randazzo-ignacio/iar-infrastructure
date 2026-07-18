@@ -1,13 +1,10 @@
 ---
-# playbooks/base.yml — Base hardening + WireGuard only.
-# Usage: ansible-playbook playbooks/base.yml --vault-password-file .vault_pass
+# playbooks/base.yml -- Base hardening only (no WireGuard).
+# Usage: ansible-playbook playbooks/base.yml --ask-vault-pass
 
 - name: Base configuration
   hosts: all
+  become: true
   roles:
-    - base
-
-- name: WireGuard mesh
-  hosts: all
-  roles:
-    - wireguard
+    - role: base
+      tags: [base]

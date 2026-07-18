@@ -1,11 +1,15 @@
 ---
-# playbooks/ollama.yml — Ollama installation on ollama_hosts.
-# Usage: ansible-playbook playbooks/ollama.yml --vault-password-file .vault_pass
+# playbooks/ollama.yml -- Ollama installation on ollama_hosts.
+# Usage: ansible-playbook playbooks/ollama.yml --ask-vault-pass
+#
+# NOTE: On GPU hosts, run the nvidia playbook first:
+#   ansible-playbook playbooks/nvidia.yml --ask-vault-pass
+# Or use site.yml which includes nvidia before ollama.
 
 - name: Configure Ollama hosts
   hosts: ollama_hosts
+  become: true
   roles:
-    - role: podman
-      when: podman_enabled | default(false) | bool
     - role: ollama
       when: ollama_enabled | default(false) | bool
+      tags: [ollama]
