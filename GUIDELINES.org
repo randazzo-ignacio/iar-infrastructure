@@ -1,0 +1,192 @@
+# iar-infrastructure Coding Guidelines
+
+Evidence-based conventions. Every rule traces to something found during the read-through of the infrastructure codebase (July 2026). No invented rules.
+
+* Table of Contents                                                     :TOC:
+- [[*i-variable-management][I. Variable Management]]
+- [[*ii-idempotency][II. Idempotency]]
+- [[*iii-structure-and-targeting][III. Structure and Targeting]]
+- [[*iv-security][IV. Security]]
+- [[*v-code-quality][V. Code Quality]]
+
+* I. Variable Management
+
+** 1. Variable Placement Hierarchy
+
+Variables are defined at the highest layer where they are constant:
+
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| 1. Role defaults | =roles/<name>/defaults/main.yml= | Per-role settings (ports, users, paths, enable flags) |
+| 2. group_vars/all | =inventory/group_vars/all/main.yml= | Truly global (domains, WireGuard, timezone, packages) |
+| 3. group_vars/<group> | =inventory/group_vars/<group>.yml= | Shared by a functional group (cloud, local, ollama_hosts) |
+| 4. host_vars | =inventory/host_vars/<host>.yml= | Per-host overrides (WG IP, enabled services, models) |
+| 5. vault | =inventory/group_vars/all/vault.yml= | Secrets (keys, tokens, credentials) |
+
+Rule: if a variable is only used by one role, it belongs in that role's defaults. If it's used by multiple roles, it belongs in group_vars. If it varies per host, it belongs in host_vars.
+
+/Evidence:/ =group_vars/all/main.yml= contained 15 variables that were role-specific defaults (ollama port, caddy email, SSH settings). Each role's defaults should own its own variables. Only truly global values (domains, WG, timezone, packages) belong in group_vars/all.
+
+** 2. Safe Defaults
+
+Role defaults must be safe, not convenient. A missing override should fail closed, not open:
+
+- =ollama_listen: ""= (blank, forces explicit configuration) not ="0.0.0.0"= (exposes service)
+- =ollama_gpu: false= (opt-in) not =true=
+- =frigate_enabled: false= (opt-in) not =true=
+
+If a blank default causes a task to fail, that is correct behavior -- the deployer forgot to configure something critical.
+
+/Evidence:/ =ollama_listen: "0.0.0.0"= as a global default meant a new Ollama host without a host_vars override would publicly expose Ollama with no authentication. Blank forces the deployer to set the WG IP explicitly.
+
+** 3. No Defaults for Per-Host Variables
+
+Variables that are genuinely per-host (different value on each host by nature) must not have defaults. They must be blank in role defaults and required in host_vars. A default creates a false sense of "it works without configuration" when the default is wrong for most hosts.
+
+/Evidence:/ =iar_ollama_host=, =iar_model=, =iar_ctx= had defaults correct for sophon but wrong for any other host. A new host with =iar_agents_enabled: true= would silently use sophon's Ollama host and model, which may not exist or may not fit the host's resources.
+
+** 4. Eliminate Redundant Variables
+
+If two variables always have the same value, eliminate one. Use the more general one.
+
+/Evidence:/ =local_ssh_user= was always the same as =ansible_user= on local hosts (both =nacho=). Two variables for the same value means two places to update. Replace =local_ssh_user= with =ansible_user= everywhere. Remove =local_ssh_user= from group_vars entirely.
+
+** 5. Derive, Don't Duplicate
+
+If a value can be computed from another variable, derive it. Don't define it as a separate variable that must be kept in sync manually.
+
+/Evidence:/ =wg_dns= is always the first usable IP in =wg_network=. Defining it separately means if =wg_network= changes, =wg_dns= must be manually updated. Deriving it eliminates a class of bugs.
+
+** 6. Blank Defaults for Secrets
+
+Secret variables in role defaults must be blank (empty string), not placeholder values like ="changeme"= or ="REPLACE_IN_VAULT"=. A blank default forces the operator to set the value in vault. A placeholder default creates a false sense of security -- the service starts with a known weak credential.
+
+/Evidence:/ =grafana_admin_password: "changeme"= is a known weak password that could be deployed to production if vault is not configured. =iar_telegram_bot_token: "REPLACE_IN_VAULT"= could be deployed as a literal string. Blank defaults mean the service fails without vault configuration -- fail closed.
+
+** 7. Vault Template File
+
+The repository must include a =vault.yml.template= file that documents every secret the infrastructure needs. The template lists variable names with placeholder values and comments explaining what each secret is for. Operators copy the template to =vault.yml=, fill in real values, and encrypt with ansible-vault.
+
+/Evidence:/ Secrets were scattered across role defaults, host_vars, and vault with no central reference. =grafana_admin_password=, =frigate_camera_rtsp_user=, =ai_agent_ssh_public_key=, =wg_private_keys=, =iar_telegram_bot_token= -- no single place to discover what belongs in vault. A template file makes vault requirements explicit and discoverable.
+
+* II. Idempotency
+
+** 8. Template Owns the File
+
+When a template deploys a configuration file, no other task modifies that file. No =lineinfile= on top of a template-managed file. The template is the single source of truth for that file's content.
+
+/Evidence:/ =sshd_config.j2= sets =PasswordAuthentication= and =PermitRootLogin=, then two =lineinfile= tasks patch the same values. Redundant and confusing -- if the template says X and lineinfile says Y, which wins? The template should own the entire file.
+
+** 9. Idempotent Command Tasks
+
+Command and shell tasks must either use =changed_when= with a real condition, =creates= / =check_mode= guards, or produce output that can be compared. =changed_when: false= on a task that actually changes things hides real changes from the operator.
+
+/Evidence:/ CDI spec generation used =changed_when: false= but the file content can change when the driver updates. Using =copy= with =remote_src= makes the task idempotent -- only reports changed when content differs. Model pull used =changed_when: false= but pulling a new model is a real change. Checking =ollama list= before pulling reports accurately.
+
+** 10. Upgrade-Friendly Idempotency
+
+Idempotency guards that prevent upgrades (like =creates:= on an install task) should be paired with an explicit upgrade mechanism. A =*_upgrade: false= variable lets the operator force a reinstall without removing the guard.
+
+/Evidence:/ =creates: "{{ ollama_install_dir }}/ollama"= means Ollama never upgrades unless the binary is manually deleted. Adding =ollama_upgrade: false= (set to =true= to force upgrade) gives Ansible control over upgrades without sacrificing idempotency.
+
+** 11. Block for Repeated Conditions
+
+When multiple consecutive tasks share the same =when= condition, wrap them in a =block:= with the condition on the block. One change, one place.
+
+/Evidence:/ 7 tasks in the ollama role each carry =when: > not (ollama_gpu | bool) or (ollama_nvidia_check.rc | default(0)) == 0=. If the condition changes, 7 tasks must be updated. A block makes it 1.
+
+** 12. Trust Playbook Guards
+
+When a playbook guards a role with =when: <feature>_enabled=, the role's tasks should not repeat the same guard. The role runs only if enabled. Per-task guards are redundant noise.
+
+/Evidence:/ 8 tasks in frigate each carry =when: frigate_enabled | bool=. The playbook already has =when: frigate_enabled=. If the guard changes, 8 tasks must be updated. Trust the playbook.
+
+* III. Structure and Targeting
+
+** 13. No Hardcoded Hostnames
+
+Use inventory groups or variables, not =inventory_hostname= comparisons. Hostnames in =when= conditions or =hosts:= directives don't scale and are brittle.
+
+/Evidence:/ =when: inventory_hostname != 'yoga'= appears 7 times in the base role. Adding another laptop means adding more exclusions. =manage_packages: false= on yoga is one variable, one place. =hosts: daftpunk= in playbooks breaks if daftpunk is replaced. Target groups instead.
+
+** 14. Groups Over Variables for Host Identity
+
+Use inventory groups to identify hosts by role, not variables. A =wg_hub= group is clearer than a =wg_hub: rammstein= variable. Groups are visible in the inventory file, enforced by Ansible's targeting, and don't require variables to be defined in the right layer.
+
+/Evidence:/ =wg_hub= as a variable requires a default or a documented prerequisite. =wg_hub= as a group is self-documenting in the inventory. Adding a second hub means adding it to the group, not changing a variable. Same pattern for =gpu_hosts=, =web_servers=, =monitoring=, =wg_peers=.
+
+** 15. Data-Driven Templates
+
+Templates should iterate over data structures, not branch on hostnames. Per-host configuration is data in host_vars, not conditional logic in templates.
+
+/Evidence:/ =Caddyfile.j2= had a 75-line if/elif chain on =inventory_hostname=. Adding a host or domain means editing the template. A data-driven template with a =caddy_sites= list means adding a host is adding data to host_vars -- no template changes. Same pattern for =prometheus.yml.j2= (iterate =groups['wg_peers']= instead of hardcoded IPs).
+
+** 16. Role Boundaries
+
+A role manages its own concerns only. Base does hardening + packages + SSH + firewall basics. WireGuard port management belongs in the wireguard role. IP forwarding belongs in the wireguard role (it's needed for WG routing). Web root creation belongs in the static-site role, not caddy.
+
+/Evidence:/ base role opens WG firewalld port (wireguard role also does this). base role sets =ip_forward= sysctl (wireguard role also sets this on hub). caddy role creates web roots for specific hosts (static-site role should own this). Cross-role duplication.
+
+** 17. Role Independence
+
+Roles must not depend on other roles having run in the same playbook execution. Each role must be self-contained: check its own prerequisites, declare its own dependencies, not assume another role's state.
+
+/Evidence:/ nvidia role ran twice on sophon because both ollama and frigate plays included it. The role was idempotent (no harm), but the double inclusion is a playbook structure problem. Making nvidia a separate play eliminates the issue. Standalone playbooks must include prerequisites or document them (ollama.yml documents "run nvidia first").
+
+* IV. Security
+
+** 18. GPG Check by Default
+
+Package repositories must have GPG check enabled. Disabling GPG check is only acceptable for one-time bootstrap of a repo release RPM that adds the GPG key to the keyring. All subsequent package installs from that repo must verify signatures.
+
+/Evidence:/ RPM Fusion install used =disable_gpg_check: true=. Container toolkit repo had =gpgcheck=0=. Both allow MITM injection of malicious packages. The release RPM bootstrap is acceptable (it imports the key). The repo config and subsequent installs should verify.
+
+** 19. No Personal Data in Role Defaults
+
+Role defaults live in a public repo. Personal email addresses, names, IPs, and domains belong in group_vars or vault (private). Role defaults use placeholders.
+
+/Evidence:/ =caddy_email: "ignacio@randazzo.ar"= in group_vars is fine (private repo context). But if it were in role defaults (public repo), someone cloning the repo would register Caddy with the wrong email. Placeholder =change-me@example.com= in defaults, real value in group_vars.
+
+** 20. Admin SSH Key in Vault
+
+SSH public keys for admin users belong in vault, not in =lookup('file', ...)= from the controller's filesystem. Decouples the role from the controller's SSH key setup.
+
+/Evidence:/ =lookup('file', '~/.ssh/id_ed25519.pub')= only works if the controller has that exact key file. Another operator running the playbook would need the same key. Moving the key to vault makes the role portable.
+
+* V. Code Quality
+
+** 21. Comments Add Context, Not Redundancy
+
+Comments should explain WHY, not WHAT. Don't repeat what the code already says. Don't list which hosts a role runs on (the playbook shows that). Don't describe what a task does (the task name says that). Comments are for:
+- Ordering constraints ("nvidia must run before ollama")
+- Non-obvious decisions ("dnf-automatic skipped on Silverblue via manage_packages")
+- External references ("Fedora 44 removed dnf config-manager, see ollama role")
+- Gotchas ("OLLAMA_VERSION must be empty, not 'latest' -- causes 404")
+
+/Evidence:/ podman role comment "Used on: greenday (AI playground), sophon (local, Frigate + Ollama GPU)" is stale after the always-on decision and repeats what the playbook targeting already shows. The ollama role's comment about =OLLAMA_VERSION= is a good example -- it explains a non-obvious gotcha that can't be derived from the code.
+
+** 22. Resolve Host Data via hostvars
+
+When a template needs another host's IP, use =hostvars[host]['wg_ip']=. Never hardcode =10.66.0.5=.
+
+/Evidence:/ Caddyfile hardcoded =10.66.0.5:8971= for Frigate and =10.66.0.3:3000= for Grafana. Prometheus config hardcoded all WG IPs. If the IP scheme changes, every hardcoded IP must be found and updated. =hostvars= resolves at template time from inventory data.
+
+** 23. Guard Debug Tasks with Verbosity
+
+Debug tasks that exist for troubleshooting should be guarded with =when: ansible_verbosity >= 2= so they don't pollute normal output. They appear only when the operator runs with =-v= or higher.
+
+/Evidence:/ "Debug image check result" task in iar-agent runs every execution, showing internal state that's only useful during troubleshooting. In normal operation, it's noise.
+
+** 24. Derive Home Directory Paths
+
+Home directory paths should be derived from a variable, not hardcoded as =/home/username=. Some distros (Fedora Silverblue) use =/var/home= instead of =/home=. Define a =*_home= variable in role defaults that can be overridden per-host.
+
+Note: =~= expansion is unreliable inside systemd templates and should be avoided. Use explicit path variables instead.
+
+/Evidence:/ All paths in ai-environment were hardcoded as =/home/ai-agent/...=. On an immutable distro with =/var/home=, these paths would be wrong. Defining =ai_agent_home: "/home/{{ ai_agent_user }}"= in defaults with override capability in host_vars handles both cases. The iar-agent role already documented this issue in its defaults comments.
+
+** 25. Document Variable Format Requirements
+
+When a variable is used in a regex or filter that expects a specific format, document the format requirement in the variable comment. A bare IP without CIDR prefix will silently produce wrong results.
+
+/Evidence:/ =wg_network= must be a full CIDR because the subnet mask is extracted via =regex_replace('^.*\\/', '')=. Without the =/prefix=, the regex returns the full string as the mask. The format requirement must be documented in the variable comment, not discovered at runtime.
