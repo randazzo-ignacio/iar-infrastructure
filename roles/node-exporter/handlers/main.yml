@@ -5,3 +5,4 @@
   service:
     name: node_exporter
     state: restarted
+    daemon_reload: true

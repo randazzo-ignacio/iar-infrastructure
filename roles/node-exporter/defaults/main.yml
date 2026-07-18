@@ -1,15 +1,17 @@
 ---
 # roles/node-exporter/defaults/main.yml
 
-# Node exporter version
+# Version -- change to upgrade. Re-download triggered by version in path.
 node_exporter_version: "1.8.1"
 
-# Port to listen on — WireGuard IP only, set per-host
-node_exporter_listen: "0.0.0.0"
+# Port to listen on
 node_exporter_port: 9100
 
 # Binary location
 node_exporter_bin: "/usr/local/bin/node_exporter"
 
-# User
-node_exporter_user: "node-exporter"
+# User (underscore, not hyphen -- POSIX convention)
+node_exporter_user: "node_exporter"
+
+# Required: wg_ip must be set in host_vars. The service binds to the
+# WireGuard IP only -- no public exposure.

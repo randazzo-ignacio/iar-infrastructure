@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
-# node_exporter.service — Prometheus host metrics exporter
-# Listens on WireGuard IP only — scraped by Prometheus over the mesh.
+# node_exporter.service -- Prometheus host metrics exporter
+# Listens on WireGuard IP only -- scraped by Prometheus over the mesh.
 
 [Unit]
 Description=Prometheus Node Exporter
@@ -17,7 +17,7 @@ ExecStart={{ node_exporter_bin }} \
 Restart=on-failure
 RestartSec=5
 
-# Hardening (relaxed for node_exporter — needs to read /proc, /sys, filesystems)
+# Hardening (relaxed for node_exporter -- needs to read /proc, /sys, filesystems)
 NoNewPrivileges=true
 ProtectHome=true
 PrivateTmp=true
