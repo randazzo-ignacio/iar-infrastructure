@@ -1,5 +1,6 @@
+ansible_user: nacho
 wg_ip: "10.66.0.5"
-# No wg_endpoint — spoke connects to hub, no public endpoint needed.
+# No wg_endpoint -- spoke, no public endpoint
 
 # Ollama with GPU offloading
 ollama_enabled: true
@@ -7,15 +8,12 @@ ollama_gpu: true
 ollama_models:
   - "nemotron-3-super:120b"
   - "gpt-oss:120b"
-ollama_listen: "10.66.0.5"  # bind to WireGuard IP only
+ollama_listen: "10.66.0.5"
 
-# Podman (for GPU container support)
 podman_enabled: true
 
-# ── i.ar Agent Infrastructure ──────────────────────────────
-# Enables the iar-agent role in iar-agents.yml playbook.
-# Repos are cloned to /var/home/nacho/repos/{i.ar,iar-personalization,gptel}.
-# Systemd timers are created for each agent in iar_agents.
+# i.ar Agent Infrastructure
+# Repos cloned to /var/home/nacho/repos/{i.ar,iar-personalization,gptel}
 iar_agents_enabled: true
 iar_ollama_host: "10.66.0.5:11434"
 iar_model: "glm-5.2:cloud"
@@ -25,11 +23,10 @@ iar_agents:
     interval: "30min"
     timeout: 3600
 
-# ── Frigate NVR ────────────────────────────────────────────
+# Frigate NVR
 frigate_enabled: true
 
-# Camera definitions — IPs only; credentials come from vault
-# RTSP URLs are templated using frigate_camera_rtsp_user/password from vault
+# Camera definitions -- IPs only; credentials come from vault
 frigate_cameras:
   interior_1:
     friendly_name: "Interior 1"

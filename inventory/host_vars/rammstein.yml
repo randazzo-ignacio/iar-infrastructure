@@ -1,6 +1,7 @@
+ansible_user: riemann
 wg_ip: "10.66.0.1"
-wg_endpoint: "randazzo.ar"  # public endpoint for WireGuard
+wg_endpoint: "randazzo.ar"
 
-# Cloudflare tunnel (fallback VPN)
-cloudflare_tunnel_enabled: false
-cloudflare_domain: "randazzo.net.ar"
+# Static site
+portfolio_page_root: "/var/www/randazzo.ar"
+portfolio_page_enabled: true

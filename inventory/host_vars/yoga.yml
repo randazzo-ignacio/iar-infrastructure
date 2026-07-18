@@ -1,2 +1,6 @@
+ansible_user: nacho
 wg_ip: "10.66.0.4"
-# No wg_endpoint — spoke connects to hub, no public endpoint needed.
+# No wg_endpoint -- spoke, no public endpoint
+
+# Fedora Silverblue uses rpm-ostree, not dnf
+manage_packages: false

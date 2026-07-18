@@ -1,12 +1,18 @@
+ansible_user: daft
 wg_ip: "10.66.0.3"
-wg_endpoint: "i.ar"  # public endpoint for WireGuard
+wg_endpoint: "i.ar"
 
-# Ollama configuration — 16 cores, 64GB RAM (CPU-only)
+# Ollama (CPU-only, 16 cores, 64GB RAM)
 ollama_enabled: true
+ollama_gpu: false
 ollama_models:
   - "llama3.3:70b"
   - "north-mini-code-1.0:q8_0"
-ollama_listen: "10.66.0.3"  # bind to WireGuard IP only
+ollama_listen: "10.66.0.3"
 
-# Static web page — emacboros landing page served by Caddy file_server
+# Static site
+static_page_root: "/var/www/emacboros"
 tool_static_page_enabled: true
+
+# Monitoring
+monitoring_enabled: true
