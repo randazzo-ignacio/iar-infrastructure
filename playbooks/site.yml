@@ -1,73 +1,110 @@
 ---
-# playbooks/site.yml — Master playbook: runs all roles in order.
-# Usage: ansible-playbook playbooks/site.yml --vault-password-file .vault_pass
+# playbooks/site.yml -- Master playbook: runs all roles in order.
+# Usage: ansible-playbook playbooks/site.yml --ask-vault-pass
 
 - name: Base configuration (all hosts)
   hosts: all
+  become: true
   roles:
-    - base
+    - role: base
+      tags: [base]
 
-- name: WireGuard mesh — hub first (prevents spoke lockout)
-  hosts: "{{ wg_hub | default('rammstein') }}"
-  roles:
-    - wireguard
-
-- name: WireGuard mesh — spokes
-  hosts: all
-  serial: 1
+- name: WireGuard mesh -- hub first (prevents spoke lockout)
+  hosts: wg_hub
+  become: true
   roles:
     - role: wireguard
-      when: inventory_hostname != wg_hub
+      tags: [wireguard]
 
-- name: Cloud servers — Caddy install + site config
-  hosts: cloud
+- name: WireGuard mesh -- spokes
+  hosts: wg_peers
+  serial: 1
+  become: true
   roles:
-    - caddy
+    - role: wireguard
+      when: inventory_hostname not in groups['wg_hub']
+      tags: [wireguard]
+
+- name: Caddy (web servers)
+  hosts: web_servers
+  become: true
+  roles:
+    - role: caddy
+      tags: [caddy]
+
+- name: Podman (all hosts)
+  hosts: all
+  become: true
+  roles:
+    - role: podman
+      tags: [podman]
+
+- name: NVIDIA GPU drivers (GPU hosts)
+  hosts: gpu_hosts
+  become: true
+  roles:
+    - role: nvidia
+      tags: [nvidia]
 
 - name: AI playground
   hosts: ai_playground
+  become: true
   roles:
-    - podman
-    - ai-environment
+    - role: ai-environment
+      tags: [ai-environment]
 
 - name: Ollama hosts
   hosts: ollama_hosts
+  become: true
   roles:
-    - role: podman
-      when: podman_enabled | default(false) | bool
-    - role: nvidia
-      when: ollama_gpu | default(false) | bool
-      tags: [nvidia]
     - role: ollama
       when: ollama_enabled | default(false) | bool
+      tags: [ollama]
 
-- name: i.ar — deploy static page content (after Caddy created web root)
-  hosts: daftpunk
-  roles:
-    - role: static-page
-      when: tool_static_page_enabled | default(false) | bool
-
-- name: randazzo.ar — deploy portfolio page (after Caddy created web root)
-  hosts: rammstein
-  roles:
-    - portfolio-page
-
-- name: Frigate NVR (NVIDIA GPU hosts)
+- name: Frigate NVR
   hosts: frigate_hosts
+  become: true
   roles:
-    - role: podman
-      when: podman_enabled | default(false) | bool
-      tags: [frigate]
-    - role: nvidia
-      tags: [frigate, nvidia]
     - role: frigate
       when: frigate_enabled | default(false) | bool
       tags: [frigate]
 
+- name: Static sites
+  hosts: web_servers
+  become: true
+  roles:
+    - role: static-site
+      vars:
+        static_site_src: "portfolio"
+        static_site_dest: "{{ portfolio_page_root }}"
+      when: portfolio_page_enabled | default(false) | bool
+      tags: [static-site]
+    - role: static-site
+      vars:
+        static_site_src: "landing"
+        static_site_dest: "{{ static_page_root }}"
+      when: tool_static_page_enabled | default(false) | bool
+      tags: [static-site]
+
+- name: Monitoring
+  hosts: monitoring
+  become: true
+  roles:
+    - role: monitoring
+      when: monitoring_enabled | default(false) | bool
+      tags: [monitoring]
+
+- name: Node exporters (all hosts)
+  hosts: all
+  become: true
+  roles:
+    - role: node-exporter
+      tags: [node-exporter]
+
 - name: i.ar Agent Infrastructure
   hosts: all
+  become: true
   roles:
-    - role: podman
-      when: podman_enabled | default(false) | bool
     - role: iar-agent
       when: iar_agents_enabled | default(false) | bool
+      tags: [iar-agent]
