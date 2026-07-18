@@ -1,11 +1,13 @@
 ---
 # roles/wireguard/defaults/main.yml
-# WireGuard defaults — overridden by group_vars/all.yml in practice.
+# WireGuard defaults. Overridden by group_vars/all/main.yml in practice.
 # Kept here for role self-documentation and standalone usability.
 
+# wg_network MUST be a full CIDR (e.g. 10.66.0.0/16) -- the subnet mask
+# is extracted via regex in the wg0.conf template. A bare IP without
+# /prefix will produce wrong results.
+wg_network: "10.66.0.0/16"
 wg_interface: wg0
 wg_port: 51820
-wg_network: "10.66.0.0/24"
-wg_dns: "10.66.0.1"
 wg_keepalive: 25
 wg_mtu: 1420
