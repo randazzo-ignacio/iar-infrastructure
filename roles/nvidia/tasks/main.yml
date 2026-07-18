@@ -1,13 +1,10 @@
 ---
 # roles/nvidia/tasks/main.yml
-# Installs NVIDIA proprietary drivers and container toolkit on Fedora.
-# Target: sophon (local, Fedora Workstation 44, NVIDIA GPU).
-#
-# Requires two playbook runs:
-#   1st run: installs akmod-nvidia, builds kernel module, sets reboot flag
-#   2nd run (after reboot): nvidia-smi works, configures container toolkit
+# Installs NVIDIA proprietary drivers and container toolkit.
+# Two-run pattern: 1st run installs driver (needs reboot), 2nd run installs toolkit.
+# Must run before ollama and frigate roles on GPU hosts.
 
-# ── Check if NVIDIA driver is already loaded ────────────────
+# -- Check if NVIDIA driver is already loaded --
 - name: Check if nvidia-smi is available
   command: nvidia-smi --query-gpu=name --format=csv,noheader
   register: nvidia_check
@@ -18,16 +15,14 @@
   set_fact:
     nvidia_driver_loaded: "{{ nvidia_check.rc == 0 }}"
 
-# ── Install RPM Fusion repositories ────────────────────────
+# -- Install driver (first run) --
 - name: Enable RPM Fusion nonfree repository
   dnf:
-    name:
-      - "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm"
+    name: "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm"
     state: present
-    disable_gpg_check: true
+    disable_gpg_check: true  # One-time bootstrap: release RPM adds GPG key to keyring
   when: not nvidia_driver_loaded | bool
 
-# ── Install NVIDIA driver ───────────────────────────────────
 - name: Install NVIDIA driver (akmod + CUDA)
   dnf:
     name: "{{ nvidia_driver_packages }}"
@@ -35,20 +30,18 @@
   when: not nvidia_driver_loaded | bool
   notify: rebuild initramfs
 
-# ── Wait for akmod build to complete ───────────────────────
-# akmod-nvidia triggers a background build of the kernel module.
-# This can take 2-5 minutes. We wait for it before proceeding.
+# -- Wait for akmod build to complete --
+# Checks for the actual built kmod file instead of grepping process names.
 - name: Wait for akmod-nvidia build to complete
   shell: |
-    # Wait for the akmod build to finish.
-    # Exclude our own PID ($$) and its parent from the match to avoid
-    # matching this very command string containing "akmods".
-    while pgrep -f "akmods" | grep -v -E "^($$|$$PPID)$" > /dev/null 2>&1; do
+    for i in $(seq 1 60); do
+      if ls /lib/modules/$(uname -r)/extra/nvidia* 2>/dev/null || \
+         ls /lib/modules/$(uname -r)/weak-updates/nvidia* 2>/dev/null; then
+        exit 0
+      fi
       sleep 5
     done
-    # Verify the kmod was actually built
-    ls /lib/modules/$(uname -r)/extra/nvidia* 2>/dev/null || \
-    ls /lib/modules/$(uname -r)/weak-updates/nvidia* 2>/dev/null
+    exit 1
   register: akmod_build
   changed_when: false
   failed_when: false
@@ -68,14 +61,20 @@
 - name: Notify that reboot is required
   debug:
     msg: |
-      ════════════════════════════════════════════════════════════
+      ============================================================
       NVIDIA driver installed. A REBOOT IS REQUIRED to load the
       kernel module. After reboot, re-run this playbook to
-      complete the setup (container toolkit + frigate).
-      ════════════════════════════════════════════════════════════
+      complete the setup (container toolkit).
+      ============================================================
   when: not nvidia_driver_loaded | bool
 
-# ── If driver is loaded, install container toolkit ─────────
+# -- Install container toolkit (second run, after reboot) --
+- name: Import NVIDIA container toolkit GPG key
+  rpm_key:
+    key: https://nvidia.github.io/libnvidia-container/gpgkey
+    state: present
+  when: nvidia_driver_loaded | bool
+
 - name: Add NVIDIA container toolkit repository
   copy:
     dest: /etc/yum.repos.d/nvidia-container-toolkit.repo
@@ -84,7 +83,7 @@
       name=nvidia-container-toolkit
       baseurl=https://nvidia.github.io/libnvidia-container/stable/rpm/$basearch
       repo_gpgcheck=1
-      gpgcheck=0
+      gpgcheck=1
       enabled=1
       gpgkey=https://nvidia.github.io/libnvidia-container/gpgkey
     owner: root
@@ -99,22 +98,30 @@
     enablerepo: nvidia-container-toolkit
   when: nvidia_driver_loaded | bool
 
-- name: Generate CDI specification for Podman
-  command: nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml
+# -- CDI specification (idempotent via copy + remote_src) --
+- name: Generate CDI spec to temp file
+  command: nvidia-ctk cdi generate --output=/tmp/nvidia-cdi.yaml.new
   changed_when: false
   when: nvidia_driver_loaded | bool
 
-- name: Enable nvidia-cdi-refresh service (auto-regenerates CDI spec on driver/kernel updates)
-  service:
-    name: "{{ item }}"
-    state: started
-    enabled: true
-  loop:
-    - nvidia-cdi-refresh.path
-    - nvidia-cdi-refresh.service
+- name: Deploy CDI specification for Podman
+  copy:
+    src: /tmp/nvidia-cdi.yaml.new
+    dest: /var/run/cdi/nvidia.yaml
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
   when: nvidia_driver_loaded | bool
 
-# ── Verify GPU is accessible ───────────────────────────────
+- name: Enable nvidia-cdi-refresh path unit
+  service:
+    name: nvidia-cdi-refresh.path
+    state: started
+    enabled: true
+  when: nvidia_driver_loaded | bool
+
+# -- Verify GPU is accessible --
 - name: Verify NVIDIA GPU is accessible
   command: nvidia-smi --query-gpu=name --format=csv,noheader
   register: nvidia_verify
