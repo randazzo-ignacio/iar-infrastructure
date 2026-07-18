@@ -23,8 +23,6 @@
   hosts: cloud
   roles:
     - caddy
-    - role: cloudflare-tunnel
-      when: cloudflare_tunnel_enabled | default(false) | bool
 
 - name: AI playground
   hosts: ai_playground

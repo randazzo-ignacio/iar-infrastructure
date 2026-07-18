@@ -1,0 +1,10 @@
+---
+# playbooks/caddy.yml — Caddy reverse proxy on web servers.
+# Usage: ansible-playbook playbooks/caddy.yml --ask-vault-pass
+
+- name: Configure Caddy
+  hosts: web_servers
+  become: true
+  roles:
+    - role: caddy
+      tags: [caddy]
