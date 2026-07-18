@@ -1,3 +1,4 @@
+# {{ ansible_managed }}
 [Unit]
 Description=i.ar {{ item.name }} agent
 Wants=network-online.target
@@ -5,7 +6,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-User={{ local_ssh_user | default('nacho') }}
+User={{ ansible_user }}
 ExecStart=/bin/bash {{ iar_repo_dir }}/utils/iar.sh --loop \
   --personalization {{ iar_personalization_dir }} \
   --agent {{ item.name }} \

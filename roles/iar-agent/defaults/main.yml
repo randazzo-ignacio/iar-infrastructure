@@ -1,42 +1,33 @@
 ---
 # roles/iar-agent/defaults/main.yml
-# i.ar agent infrastructure defaults.
-# Override per-host in host_vars.
 
-# ── Repository paths ───────────────────────────────────────
-# Where to clone the i.ar repo and personalization repo.
+# -- Repository paths --
+# Derived from ansible_user. Override iar_repos_base for Silverblue (/var/home).
 # Must be absolute paths -- systemd does not expand ~user/.
-# Default: /home/nacho (standard Fedora). Override in host_vars for
-# Silverblue hosts where home is /var/home.
-iar_repo_dir: "/home/nacho/repos/i.ar"
-iar_personalization_dir: "/home/nacho/repos/iar-personalization"
-iar_gptel_fork_dir: "/home/nacho/repos/gptel"
+iar_repos_base: "/home/{{ ansible_user }}/repos"
+iar_repo_dir: "{{ iar_repos_base }}/i.ar"
+iar_personalization_dir: "{{ iar_repos_base }}/iar-personalization"
+iar_gptel_fork_dir: "{{ iar_repos_base }}/gptel"
 
-# ── Git remotes (emacboros forks) ───────────────────────────
+# -- Git remotes --
 iar_repo_remote: "git@github.com:emacboros/i.ar.git"
 iar_personalization_remote: "git@github.com:emacboros/iar-personalization.git"
 iar_gptel_fork_remote: "https://github.com/randazzo-ignacio/gptel.git"
 
-# ── Ollama connection ──────────────────────────────────────
-# Default to sophon's WireGuard IP with local GPU model.
-# Override per-host if needed.
-iar_ollama_host: "10.66.0.5:11434"
-iar_model: "nemotron-3-super:120b"
-iar_ctx: 131072
+# -- Ollama connection (REQUIRED per-host, no default) --
+iar_ollama_host: ""
+iar_model: ""
+iar_ctx: ""
 
-# ── Agent configuration ─────────────────────────────────────
-# Which agents to deploy as systemd timers.
-# Each entry: name, interval (systemd OnUnitActiveSec), timeout
+# -- Agent configuration --
 iar_agents:
   - name: librarian
     interval: "30min"
     timeout: 3600
 
-# ── Telegram notifications ─────────────────────────────────
-# Credentials for agent Telegram notifications.
-# Override in vault.yml -- do NOT commit real tokens.
-iar_telegram_bot_token: "REPLACE_IN_VAULT"
-iar_telegram_chat_id: "REPLACE_IN_VAULT"
+# -- Telegram notifications (REQUIRED, set in vault) --
+iar_telegram_bot_token: ""
+iar_telegram_chat_id: ""
 
-# ── Container image ────────────────────────────────────────
+# -- Container image --
 iar_container_image: "iar-emacboros"

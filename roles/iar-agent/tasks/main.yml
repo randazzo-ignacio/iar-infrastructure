@@ -1,23 +1,15 @@
 ---
 # roles/iar-agent/tasks/main.yml
-# Deploys i.ar agent infrastructure on a host:
-# - Clones i.ar, iar-personalization, and gptel fork repos
-# - Builds the Podman container image
-# - Installs systemd timers for configured agents
-#
-# Runs on: sophon (or any host with Podman + Ollama access)
-# Requires: podman role (for Podman installation)
+# Deploys i.ar agent infrastructure: repos, container image, systemd timers.
+# Prerequisites: podman role must run first.
 
-# ════════════════════════════════════════════════════════════
-# 1. Repository setup
-# ════════════════════════════════════════════════════════════
-
+# -- 1. Repository setup --
 - name: Create repos directory
   file:
-    path: "{{ iar_repo_dir | dirname }}"
+    path: "{{ iar_repos_base }}"
     state: directory
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
 
 - name: Clone i.ar repository
@@ -26,7 +18,7 @@
     dest: "{{ iar_repo_dir }}"
     version: main
     accept_hostkey: true
-  become_user: "{{ local_ssh_user | default('nacho') }}"
+  become_user: "{{ ansible_user }}"
   register: iar_repo_clone
 
 - name: Clone iar-personalization repository
@@ -35,14 +27,14 @@
     dest: "{{ iar_personalization_dir }}"
     version: main
     accept_hostkey: true
-  become_user: "{{ local_ssh_user | default('nacho') }}"
+  become_user: "{{ ansible_user }}"
   register: iar_personalization_clone
 
 - name: Clone gptel fork repository
   git:
     repo: "{{ iar_gptel_fork_remote }}"
     dest: "{{ iar_gptel_fork_dir }}"
-  become_user: "{{ local_ssh_user | default('nacho') }}"
+  become_user: "{{ ansible_user }}"
   register: iar_gptel_clone
 
 - name: Ensure iar.sh is executable
@@ -54,20 +46,17 @@
   template:
     src: telegram.sh.j2
     dest: "{{ iar_repo_dir }}/utils/telegram.sh"
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0644'
 
-# ════════════════════════════════════════════════════════════
-# 2. Personalization directory structure
-# ════════════════════════════════════════════════════════════
-
+# -- 2. Personalization directory structure --
 - name: Ensure personalization subdirectories exist
   file:
     path: "{{ iar_personalization_dir }}/{{ item }}"
     state: directory
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
   loop:
     - knowledge
@@ -78,17 +67,18 @@
   file:
     path: "{{ iar_personalization_dir }}/audit/{{ item.name }}"
     state: directory
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
   loop: "{{ iar_agents }}"
 
-- name: Pre-create cycle.log files with correct ownership
-  file:
-    path: "{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log"
-    state: touch
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+- name: Ensure cycle.log exists
+  copy:
+    content: ""
+    dest: "{{ iar_personalization_dir }}/audit/{{ item.name }}/cycle.log"
+    force: false
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0644'
   loop: "{{ iar_agents }}"
 
@@ -96,18 +86,15 @@
   file:
     path: "{{ iar_personalization_dir }}/tasks/{{ item.name }}"
     state: directory
-    owner: "{{ local_ssh_user | default('nacho') }}"
-    group: "{{ local_ssh_user | default('nacho') }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0755'
   loop: "{{ iar_agents }}"
 
-# ════════════════════════════════════════════════════════════
-# 3. Container image build
-# ════════════════════════════════════════════════════════════
-
-- name: Check if i.ar container image exists (as service user)
+# -- 3. Container image build --
+- name: Check if i.ar container image exists
   command: podman image exists {{ iar_container_image }}
-  become_user: "{{ local_ssh_user | default('nacho') }}"
+  become_user: "{{ ansible_user }}"
   register: iar_image_check
   changed_when: false
   failed_when: false
@@ -115,6 +102,7 @@
 - name: Debug image check result
   debug:
     msg: "Image exists check: rc={{ iar_image_check.rc }}, will build={{ iar_image_check.rc != 0 }}"
+  when: ansible_verbosity >= 2
 
 - name: Ensure build.sh is executable
   file:
@@ -124,13 +112,11 @@
 - name: Build i.ar container image
   command: >
     /bin/bash {{ iar_repo_dir }}/containers/build.sh
-  become_user: "{{ local_ssh_user | default('nacho') }}"
+  become_user: "{{ ansible_user }}"
   when: iar_image_check.rc != 0
+  changed_when: true
 
-# ════════════════════════════════════════════════════════════
-# 4. Systemd timers for agents
-# ════════════════════════════════════════════════════════════
-
+# -- 4. Systemd timers for agents --
 - name: Create systemd service units for agents
   template:
     src: iar-agent.service.j2
@@ -139,6 +125,7 @@
     group: root
     mode: '0644'
   loop: "{{ iar_agents }}"
+  notify: reload systemd
 
 - name: Create systemd timer units for agents
   template:
@@ -148,10 +135,7 @@
     group: root
     mode: '0644'
   loop: "{{ iar_agents }}"
-
-- name: Reload systemd daemon
-  systemd:
-    daemon_reload: true
+  notify: reload systemd
 
 - name: Enable and start agent timers
   systemd:
