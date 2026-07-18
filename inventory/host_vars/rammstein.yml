@@ -2,6 +2,19 @@ ansible_user: riemann
 wg_ip: "10.66.0.1"
 wg_endpoint: "randazzo.ar"
 
+# Caddy sites
+caddy_sites:
+  - domain: "randazzo.ar"
+    type: static
+    root: "/var/www/randazzo.ar"
+  - domain: "randazzo.com.ar"
+    type: redirect
+    target: "https://randazzo.ar{uri}"
+  - domain: "camaras.randazzo.ar"
+    type: proxy
+    backend_host: sophon
+    backend_port: 8971
+
 # Static site
 portfolio_page_root: "/var/www/randazzo.ar"
 portfolio_page_enabled: true

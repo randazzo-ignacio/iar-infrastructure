@@ -2,5 +2,12 @@ ansible_user: green
 wg_ip: "10.66.0.2"
 wg_endpoint: "0b.ar"
 
+# Caddy sites
+caddy_sites:
+  - domain: "0b.ar"
+    type: proxy
+    backend_host: greenday
+    backend_port: 80
+
 podman_enabled: true
 # ai_agent_ssh_public_key moved to vault

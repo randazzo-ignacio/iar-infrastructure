@@ -1,7 +1,23 @@
 ---
 # roles/caddy/defaults/main.yml
-# Caddy defaults — overridden by group_vars/all.yml in practice.
 
-caddy_version: "latest"
+# Email for Let's Encrypt registration. Placeholder -- override in group_vars.
+# Do NOT put personal email in role defaults (public repo).
 caddy_email: "change-me@example.com"
 caddy_config_path: "/etc/caddy/Caddyfile"
+
+# Site definitions -- set per-host in host_vars as a list of dicts.
+# Each site: domain, type (static|proxy|redirect), and type-specific keys.
+# Examples:
+#   caddy_sites:
+#     - domain: "randazzo.ar"
+#       type: static
+#       root: "/var/www/randazzo.ar"
+#     - domain: "randazzo.com.ar"
+#       type: redirect
+#       target: "https://randazzo.ar{uri}"
+#     - domain: "camaras.randazzo.ar"
+#       type: proxy
+#       backend_host: sophon
+#       backend_port: 8971
+caddy_sites: []
