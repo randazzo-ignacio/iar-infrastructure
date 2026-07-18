@@ -1,19 +1,21 @@
 ---
 # roles/base/defaults/main.yml
-# Default values for the base role — can be overridden by group_vars/host_vars.
 
-# ── SSH ────────────────────────────────────────────────────
+# -- SSH --
 ssh_port: 22
 ssh_password_auth: "no"
-ssh_permit_root_login: "no"
+ssh_permit_root_login: "prohibit-password"
 
-# ── Timezone ───────────────────────────────────────────────
-timezone: "UTC"
+# -- Timezone --
+timezone: "America/Argentina/Buenos_Aires"
 
-# ── Sysctl hardening ───────────────────────────────────────
+# -- Package management --
+# Set to false on hosts that don't use dnf (e.g. Silverblue/rpm-ostree)
+manage_packages: true
+
+# -- Sysctl hardening (all hosts) --
+# IP forwarding is handled by the wireguard role (hub only)
 base_sysctl_settings:
-  - { key: 'net.ipv4.ip_forward', value: '1' }  # needed for WireGuard
-  - { key: 'net.ipv4.conf.all.forwarding', value: '1' }
   - { key: 'net.ipv4.conf.default.rp_filter', value: '1' }
   - { key: 'net.ipv4.tcp_syncookies', value: '1' }
   - { key: 'net.ipv4.conf.all.accept_redirects', value: '0' }
