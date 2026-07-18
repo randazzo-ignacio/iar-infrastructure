@@ -1,26 +1,18 @@
 ---
 # roles/podman/tasks/main.yml
-# Installs Podman and Podman Compose on hosts that need it.
-# Used on: greenday (AI playground), sophon (local, Frigate + Ollama GPU).
-# Cloud hosts run AlmaLinux 10 (need EPEL); local hosts run Fedora 44 (do not).
+# Installs Podman on all hosts. EPEL required for non-Fedora RHEL family.
 
-# ── Install EPEL (AlmaLinux/RHEL only, not Fedora) ─────────
-- name: Install EPEL
+- name: Install EPEL (non-Fedora only)
   dnf:
-    name:
-      - epel-release
+    name: epel-release
     state: present
-  when: "'cloud' in group_names"
+  when: ansible_distribution != "Fedora"
 
-# ── Install Podman ─────────────────────────────────────────
 - name: Install Podman
   dnf:
-    name:
-      - podman
-      - podman-compose
+    name: podman
     state: present
 
-# ── Enable Podman ──────────────────────────────────────────
 - name: Enable and start Podman
   service:
     name: podman

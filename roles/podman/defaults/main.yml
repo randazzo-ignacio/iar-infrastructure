@@ -1,5 +1,6 @@
 ---
 # roles/podman/defaults/main.yml
-# podman role defaults.
 
-podman_enabled: false
+# Podman is installed on all hosts by default.
+# Set to false in host_vars to skip on hosts that don't need it.
+podman_enabled: true
