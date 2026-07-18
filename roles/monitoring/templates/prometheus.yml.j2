@@ -1,6 +1,6 @@
-# Prometheus Configuration
-# Scrape targets across the WireGuard mesh (10.66.0.x).
-# Prometheus runs on daftpunk (10.66.0.3) and pulls from all hosts.
+# {{ ansible_managed }}
+# Prometheus configuration
+# Scrape targets across the WireGuard mesh.
 
 global:
   scrape_interval: 15s
@@ -17,19 +17,8 @@ scrape_configs:
   - job_name: "node_exporters"
     static_configs:
       - targets:
-          - "10.66.0.1:9100"
-          - "10.66.0.2:9100"
-          - "10.66.0.3:9100"
-          - "10.66.0.4:9100"
-          - "10.66.0.5:9100"
+{% for host in groups['wg_peers'] %}
+          - "{{ hostvars[host]['wg_ip'] }}:{{ node_exporter_port }}"
+{% endfor %}
         labels:
           group: "hosts"
-
-  - job_name: "cadvisor"
-    static_configs:
-      - targets:
-          - "10.66.0.2:8081"
-          - "10.66.0.3:8081"
-          - "10.66.0.5:8081"
-        labels:
-          group: "containers"

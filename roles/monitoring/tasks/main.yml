@@ -1,11 +1,10 @@
 ---
 # roles/monitoring/tasks/main.yml
-# Deploys Prometheus + Grafana monitoring stack via podman-compose.
-# Runs on: daftpunk (i.ar, 10.66.0.3) — has 16 cores, 64GB RAM.
-# All services bind to WireGuard IP only — no public exposure.
+# Deploys Prometheus + Grafana monitoring stack via podman compose.
+# All services bind to WireGuard IP only -- no public exposure.
 # Prometheus scrapes all hosts over WireGuard (pull model).
 
-# ── Create directories ──────────────────────────────────────
+# -- Create directories --
 - name: Create monitoring compose directory
   file:
     path: "{{ monitoring_compose_dir }}"
@@ -30,7 +29,7 @@
     group: 472
     mode: '0755'
 
-# ── Deploy compose file and configs ────────────────────────
+# -- Deploy compose file and configs --
 - name: Deploy compose.yml
   template:
     src: compose.yml.j2
@@ -38,6 +37,7 @@
     owner: root
     group: root
     mode: '0644'
+  notify: restart monitoring
 
 - name: Deploy prometheus.yml
   template:
@@ -57,14 +57,8 @@
     mode: '0644'
   notify: restart monitoring
 
-# ── Start the stack ─────────────────────────────────────────
-- name: Start monitoring stack with podman-compose
-  command: "podman-compose -f {{ monitoring_compose_dir }}/compose.yml up -d"
-  args:
-    chdir: "{{ monitoring_compose_dir }}"
-  changed_when: false
-
-- name: Enable monitoring on boot (systemd)
+# -- Create systemd service --
+- name: Deploy monitoring-stack systemd service
   copy:
     dest: /etc/systemd/system/monitoring-stack.service
     content: |
@@ -76,17 +70,19 @@
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStart=/usr/bin/podman-compose -f {{ monitoring_compose_dir }}/compose.yml up -d
-      ExecStop=/usr/bin/podman-compose -f {{ monitoring_compose_dir }}/compose.yml down
+      ExecStart=/usr/bin/podman compose -f {{ monitoring_compose_dir }}/compose.yml up -d
+      ExecStop=/usr/bin/podman compose -f {{ monitoring_compose_dir }}/compose.yml down
 
       [Install]
       WantedBy=multi-user.target
     owner: root
     group: root
     mode: '0644'
-  notify: reload systemd
+  notify: restart monitoring
 
-- name: Enable monitoring-stack service
+# -- Enable and start --
+- name: Enable and start monitoring-stack
   service:
     name: monitoring-stack
+    state: started
     enabled: true

@@ -1,16 +1,14 @@
-# ── Prometheus + Grafana Monitoring Stack ───────────────────
-# docker-compose / podman-compose compatible
-# Deployed to: daftpunk (i.ar, 10.66.0.3) — 16 cores, 64GB RAM
-# All services bind to WireGuard IP only — no public exposure.
+# {{ ansible_managed }}
+# Prometheus + Grafana monitoring stack
+# All services bind to WireGuard IP only -- no public exposure.
 
 services:
-  # ── Prometheus — metrics storage + querying ──────────────
   prometheus:
     image: docker.io/prom/prometheus:{{ prometheus_version }}
     container_name: prometheus
     restart: unless-stopped
     ports:
-      - "10.66.0.3:{{ prometheus_port }}:9090"
+      - "{{ wg_ip }}:{{ prometheus_port }}:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
@@ -24,13 +22,12 @@ services:
     networks:
       - monitoring
 
-  # ── Grafana — dashboards + visualization ─────────────────
   grafana:
     image: docker.io/grafana/grafana:{{ grafana_version }}
     container_name: grafana
     restart: unless-stopped
     ports:
-      - "10.66.0.3:{{ grafana_port }}:3000"
+      - "{{ wg_ip }}:{{ grafana_port }}:3000"
     volumes:
       - {{ grafana_data_dir }}:/var/lib/grafana
     environment:
