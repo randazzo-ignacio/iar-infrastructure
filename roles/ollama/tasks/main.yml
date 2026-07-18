@@ -1,10 +1,9 @@
 ---
 # roles/ollama/tasks/main.yml
 # Installs Ollama and pulls specified models.
-# Runs on: daftpunk (cloud, AlmaLinux, CPU-only), sophon (local, Fedora, GPU)
-# GPU driver installation is handled by the nvidia role, not here.
+# NVIDIA driver installation is handled by the nvidia role -- must run first on GPU hosts.
 
-# ── Create ollama user ──────────────────────────────────────
+# -- Create ollama user --
 - name: Create ollama user
   user:
     name: "{{ ollama_user }}"
@@ -12,7 +11,7 @@
     create_home: false
     shell: /sbin/nologin
 
-# ── Create models directory ─────────────────────────────────
+# -- Create models directory --
 - name: Create models directory
   file:
     path: "{{ ollama_models_dir }}"
@@ -21,13 +20,7 @@
     group: "{{ ollama_user }}"
     mode: '0755'
 
-# ── Pre-flight: check NVIDIA GPU status (GPU hosts only) ───
-# The Ollama install.sh script tries to install CUDA drivers itself when
-# it detects an NVIDIA GPU via lspci but nvidia-smi is not yet available.
-# On Fedora 44 (dnf5), this fails because `dnf config-manager --add-repo`
-# was removed. The nvidia role handles driver installation via RPM Fusion,
-# but requires a reboot after the first install. We skip the Ollama install
-# until nvidia-smi is available to avoid the script's broken CUDA path.
+# -- Pre-flight: check NVIDIA GPU status (GPU hosts only) --
 - name: Check if nvidia-smi is available (GPU hosts)
   command: nvidia-smi --query-gpu=name --format=csv,noheader
   register: ollama_nvidia_check
@@ -38,106 +31,67 @@
 - name: Skip Ollama install until NVIDIA driver is loaded
   debug:
     msg: |
-      ════════════════════════════════════════════════════════════
+      ============================================================
       NVIDIA driver installed but not yet loaded (needs reboot).
-      Skipping Ollama install to avoid the install script's broken
-      `dnf config-manager --add-repo` path on Fedora 44.
-      Reboot and re-run the playbook to complete Ollama setup.
-      ════════════════════════════════════════════════════════════
+      Skipping Ollama install. Reboot and re-run the playbook.
+      ============================================================
   when:
     - ollama_gpu | bool
     - ollama_nvidia_check.rc | default(0) != 0
 
-# ── Install Ollama ──────────────────────────────────────────
-# The official install.sh downloads the binary from ollama.com/download.
-# When nvidia-smi is available, the script detects it and skips its
-# own CUDA driver installation — exactly what we want, since the nvidia
-# role handles that via RPM Fusion.
-#
-# OLLAMA_VERSION must be empty for the latest release, or a specific
-# version string (e.g. "0.5.1"). The value "latest" causes a 404.
-- name: Download and install Ollama
-  shell: |
-    curl -fsSL https://ollama.com/install.sh | sh
-  args:
-    creates: "{{ ollama_install_dir }}/ollama"
-  environment:
-    OLLAMA_VERSION: "{{ ollama_version | default('') }}"
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
+# -- Install and configure Ollama (when GPU ready or CPU-only) --
+- name: Install and configure Ollama
+  block:
+    - name: Check if Ollama is installed
+      stat:
+        path: "{{ ollama_install_dir }}/ollama"
+      register: ollama_binary
 
-# ── Configure Ollama service ───────────────────────────────
-- name: Create systemd override directory
-  file:
-    path: /etc/systemd/system/ollama.service.d
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
+    - name: Download and install Ollama
+      shell: |
+        curl -fsSL https://ollama.com/install.sh | sh
+      environment:
+        OLLAMA_VERSION: "{{ ollama_version | default('') }}"
+      when: >
+        not ollama_binary.stat.exists
+        or ollama_upgrade | default(false) | bool
 
-- name: Create Ollama systemd service
-  template:
-    src: ollama.service.j2
-    dest: /etc/systemd/system/ollama.service
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart ollama
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
+    - name: Create Ollama systemd service
+      template:
+        src: ollama.service.j2
+        dest: /etc/systemd/system/ollama.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart ollama
 
-- name: Create Ollama environment override
-  copy:
-    dest: /etc/systemd/system/ollama.service.d/override.conf
-    content: |
-      [Service]
-      Environment="OLLAMA_HOST={{ ollama_listen }}:{{ ollama_port }}"
-      Environment="OLLAMA_MODELS={{ ollama_models_dir }}"
-      Environment="OLLAMA_KEEP_ALIVE={{ ollama_keepalive }}"
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart ollama
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
+    - name: Enable and start Ollama
+      service:
+        name: ollama
+        state: started
+        enabled: true
 
-- name: Reload systemd
-  systemd:
-    daemon_reload: true
-  notify: restart ollama
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
+    - name: List installed Ollama models
+      command: "{{ ollama_install_dir }}/ollama list"
+      become: true
+      become_user: "{{ ollama_user }}"
+      environment:
+        OLLAMA_HOST: "{{ ollama_listen }}:{{ ollama_port }}"
+        OLLAMA_MODELS: "{{ ollama_models_dir }}"
+      register: ollama_installed_models
+      changed_when: false
 
-- name: Enable and start Ollama
-  service:
-    name: ollama
-    state: started
-    enabled: true
-  when: >
-    not (ollama_gpu | bool)
-    or (ollama_nvidia_check.rc | default(0)) == 0
-
-# ── Pull models ────────────────────────────────────────────
-# Use full path because the ollama user has /sbin/nologin shell
-# and Ansible's command module does not resolve PATH.
-- name: Pull Ollama models
-  command: "{{ ollama_install_dir }}/ollama pull {{ item }}"
-  become: true
-  become_user: "{{ ollama_user }}"
-  environment:
-    OLLAMA_HOST: "{{ ollama_listen }}:{{ ollama_port }}"
-    OLLAMA_MODELS: "{{ ollama_models_dir }}"
-  loop: "{{ ollama_models }}"
-  changed_when: false
-  async: 600
-  poll: 30
+    - name: Pull Ollama models
+      command: "{{ ollama_install_dir }}/ollama pull {{ item }}"
+      become: true
+      become_user: "{{ ollama_user }}"
+      environment:
+        OLLAMA_HOST: "{{ ollama_listen }}:{{ ollama_port }}"
+        OLLAMA_MODELS: "{{ ollama_models_dir }}"
+      loop: "{{ ollama_models }}"
+      when: item not in ollama_installed_models.stdout
+      async: 600
+      poll: 5
   when: >
     not (ollama_gpu | bool)
     or (ollama_nvidia_check.rc | default(0)) == 0
