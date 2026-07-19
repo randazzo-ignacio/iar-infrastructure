@@ -8,7 +8,7 @@
     name: epel-release
     state: present
   when:
-    - ansible_distribution != "Fedora"
+    - ansible_facts["distribution"] != "Fedora"
     - manage_packages | default(true) | bool
 
 - name: Install Podman

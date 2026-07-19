@@ -13,7 +13,7 @@ frigate_config_dir: "{{ frigate_base_dir }}/config"
 frigate_storage_dir: "{{ frigate_base_dir }}/storage"
 
 # External media mount (where recordings are persisted)
-frigate_media_mount: "/run/media/{{ ansible_user }}/DATA"
+frigate_media_mount: "/home/{{ ansible_user }}"
 frigate_media_dir: "{{ frigate_media_mount }}/containers/frigate/storage"
 
 # -- Runtime --
