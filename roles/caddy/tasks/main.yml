@@ -5,9 +5,9 @@
 
 # -- Install Caddy --
 - name: Add Caddy COPR repo
-  dnf:
-    name: "@caddy/caddy"
-    state: present
+  command: "dnf copr enable -y @caddy/caddy"
+  args:
+    creates: /etc/yum.repos.d/_copr_copr.fedorainfracloud.org_group_caddy_caddy.repo
 
 - name: Install Caddy
   dnf:
