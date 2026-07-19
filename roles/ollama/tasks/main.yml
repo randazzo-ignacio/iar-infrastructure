@@ -73,8 +73,6 @@
 
     - name: List installed Ollama models
       command: "{{ ollama_install_dir }}/ollama list"
-      become: true
-      become_user: "{{ ollama_user }}"
       environment:
         OLLAMA_HOST: "{{ ollama_listen }}:{{ ollama_port }}"
         OLLAMA_MODELS: "{{ ollama_models_dir }}"
@@ -83,8 +81,6 @@
 
     - name: Pull Ollama models
       command: "{{ ollama_install_dir }}/ollama pull {{ item }}"
-      become: true
-      become_user: "{{ ollama_user }}"
       environment:
         OLLAMA_HOST: "{{ ollama_listen }}:{{ ollama_port }}"
         OLLAMA_MODELS: "{{ ollama_models_dir }}"

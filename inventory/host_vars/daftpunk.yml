@@ -16,8 +16,7 @@ caddy_sites:
 ollama_enabled: true
 ollama_gpu: false
 ollama_models:
-  - "llama3.3:70b"
-  - "north-mini-code-1.0:q8_0"
+  - "ornith:35b"
 ollama_listen: "10.66.0.3"
 
 # Static site
