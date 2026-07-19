@@ -11,10 +11,9 @@
 └──────────────────────┬──────────────────────────────┘
                        │
           ┌────────────┴────────────┐
-          │   randazzo-ar (Proxy)   │
-          │   Caddy + TLS + firewalld│
-          │   Fail2ban + SSH harden │
-          │   CF Tunnel (fallback)  │
+          │   rammstein (Proxy)      │
+          │   Caddy + TLS + firewalld │
+          │   WG hub                 │
           └────────────┬────────────┘
                        │
            WireGuard (encrypted tunnel)
@@ -23,11 +22,12 @@
      │                 │                 │
      ▼                 ▼                 ▼
 ┌─────────┐     ┌─────────┐      ┌──────────┐
-│ ob-ar   │     │ i-ar    │      │ server-pc│
+│greenday │     │daftpunk │      │ sophon   │
 │firewalld│     │firewalld│      │firewalld │
-│ Docker  │     │ Ollama  │      │ Ollama   │
-│ AI user │     │ (WG IP  │      │ (WG IP   │
-│ (lim.)  │     │  only)  │      │  only)   │
+│ Podman  │     │ Ollama  │      │ Ollama   │
+│ AI user │     │ Grafana │      │ Frigate  │
+│ (lim.)  │     │ (WG IP  │      │ (WG IP   │
+│         │     │  only)  │      │  only)   │
 └─────────┘     └─────────┘      └──────────┘
 ```
 
@@ -39,51 +39,47 @@
 - **Ollama:** Binds to `10.66.0.x` (WireGuard IP) only. Not accessible without VPN.
 
 ### Layer 2: Host Hardening
-- **SSH:** Key-only authentication. No passwords. Root login restricted to key-based.
-- **Fail2ban:** 3 failed SSH attempts → 1 hour ban.
-- **Sysctl:** SYN cookies, no redirects, kptr/dmesg restrictions.
+- **SSH:** Key-only authentication. No passwords. Root login restricted to key-based (`prohibit-password`).
+- **Per-host admin users:** Each host has a unique admin username (e.g. `riemann` on rammstein) to prevent terminal confusion when working on multiple hosts.
+- **Sysctl:** SYN cookies, no redirects, kptr/dmesg restrictions. IP forwarding on hub only.
 - **Automatic updates:** Security patches applied automatically via dnf-automatic.
-- **Admin user:** Non-root sudo user created on cloud servers.
+- **Firewalld:** Running on all hosts including local machines.
 
 ### Layer 3: Application
-- **Caddy:** Automatic TLS via Let's Encrypt. Security headers (HSTS, X-Frame-Options, etc.).
-- **Ollama:** No authentication built-in — relies on network isolation (WireGuard only).
-- **Docker:** AI agent has docker group access but limited sudo. Process/file limits set.
+- **Caddy:** Automatic TLS via Let's Encrypt. Security headers (HSTS, X-Frame-Options, nosniff, no-referrer) on all sites.
+- **Ollama:** No authentication built-in -- relies on network isolation (WireGuard IP only).
+- **Podman:** AI agent has Podman access but limited sudo. Process/file limits set.
 
-### Layer 4: AI Agent Isolation (ob-ar)
+### Layer 4: AI Agent Isolation (greenday)
 - **Separate user:** `ai-agent` with its own SSH key.
-- **Limited sudo:** Only docker and docker-related systemctl commands.
-- **Resource limits:** Max 1000 processes, 50GB file size.
-- **No access to other servers:** WireGuard config only allows the agent's host to see the hub, not other peers (unless explicitly configured).
+- **Resource limits:** Max 1000 processes (hard), 500 (soft). Max 50GB file size (hard), 10MB (soft).
+- **Workspace structure:** `/home/ai-agent/workspace/{projects,containers,scripts,data}`
 
-### Layer 5: Fallback VPN (Cloudflare Tunnel)
-- **Purpose:** If WireGuard UDP is blocked (corporate networks, hotels), Cloudflare Tunnel provides TCP-based fallback through Cloudflare's network.
-- **Domain:** randazzo.net.ar (delegated to Cloudflare).
-- **Setup:** cloudflared runs as a service on randazzo-ar, creates an outbound tunnel to Cloudflare. No inbound ports needed.
-- **Access:** Use `cloudflared access ssh --hostname randazzo.net.ar` as a ProxyCommand.
+### Layer 5: Ansible Security
+- **Least privilege:** `become = False` globally. Each play declares `become: true` explicitly where needed.
+- **Host key checking:** Enabled (`host_key_checking = True`). SSH host keys verified on first connection.
+- **Vault:** All secrets encrypted with ansible-vault. Template file (`vault.yml.template`) documents every secret.
+- **GPG checks:** Package repositories have GPG verification enabled. Only one-time bootstrap RPMs disable it.
 
 ## Threat Model
 
-| Threat                    | Mitigation                                      |
-|---------------------------|------------------------------------------------|
-| Server compromise         | firewalld + key-only SSH + fail2ban              |
-| Network sniffing          | WireGuard encryption + TLS (Caddy)             |
-| Ollama API abuse          | Binds to WG IP only — requires VPN             |
-| AI agent runaway          | Resource limits + limited sudo + Docker isol.  |
-| WG port blocked           | Cloudflare Tunnel fallback (randazzo.net.ar)   |
-| Key compromise            | Ansible Vault encryption + rotation procedure  |
-| DNS hijack                | Registrar-locked + Cloudflare DNS              |
-| Provider outage           | Full IaC — rebuild from scratch in minutes     |
-| Data loss                 | All config in Git. No persistent state needed. |
+| Threat | Mitigation |
+|--------|-----------|
+| Server compromise | firewalld + key-only SSH + automatic updates |
+| Network sniffing | WireGuard encryption + TLS (Caddy) |
+| Ollama API abuse | Binds to WG IP only -- requires VPN |
+| AI agent runaway | Resource limits + limited sudo + Podman isolation |
+| Key compromise | Ansible Vault encryption + rotation procedure |
+| DNS hijack | Registrar-locked DNS |
+| Provider outage | Full IaC -- rebuild from scratch in minutes |
+| Data loss | All config in Git. Backup role planned. |
 
 ## Known Limitations
 
-1. **Ollama has no authentication:** It relies entirely on network isolation. If WireGuard is compromised, Ollama is open. Consider adding a reverse proxy with auth in front of Ollama if this concerns you.
+1. **Ollama has no authentication:** Relies entirely on network isolation. If WireGuard is compromised, Ollama is open.
 
-2. **AI agent has Docker access:** Docker root-equivalent in practice (can mount host filesystem). The resource limits are advisory, not enforced by cgroups. For stronger isolation, consider running the agent inside a Docker container itself or using Podman with SELinux.
+2. **AI agent has Podman access:** Podman is root-equivalent in practice (can mount host filesystem). Resource limits are advisory, not enforced by cgroups.
 
-3. **Single hub (randazzo-ar):** If the proxy/hub goes down, the WireGuard mesh breaks. Peers can't reach each other. This is acceptable for the current scale but would need a multi-hub design for larger deployments.
+3. **Single hub (rammstein):** If the proxy/hub goes down, the WireGuard mesh breaks. Peers can't reach each other.
 
-4. **No monitoring/alerting:** Currently no automated monitoring. Consider adding Prometheus + Grafana or Uptime Kuma as a future enhancement.
-
-5. **No backup of runtime data:** The IaC covers configuration, not data. If ob-ar has AI-generated work in containers, it is not backed up. Consider adding a backup role for critical data.
+4. **No backup of runtime data:** IaC covers configuration, not data. Frigate recordings, Grafana dashboards, AI-generated work -- none are backed up. Backup role is planned.
