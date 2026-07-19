@@ -4,7 +4,6 @@
 # All traffic between peers is routed through the hub.
 
 {% set wg_hub_host = groups['wg_hub'][0] %}
-{% set wg_dns_ip = wg_network | regex_replace('0/(.*)', '1/\\1') %}
 
 [Interface]
 PrivateKey = {{ wg_private_keys[inventory_hostname] }}
@@ -27,6 +26,7 @@ Endpoint = {{ hostvars[host]['wg_endpoint'] }}:{{ wg_port }}
 {% endif %}
 PersistentKeepalive = {{ wg_keepalive }}
 
+{% endif %}
 {% endfor %}
 {% else %}
 # Spoke: Connect to hub, route all WG traffic through it

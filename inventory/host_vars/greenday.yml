@@ -1,4 +1,4 @@
-ansible_user: green
+ansible_user: shannon
 wg_ip: "10.66.0.2"
 wg_endpoint: "0b.ar"
 

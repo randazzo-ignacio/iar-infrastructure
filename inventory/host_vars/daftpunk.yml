@@ -1,4 +1,4 @@
-ansible_user: daft
+ansible_user: descartes
 wg_ip: "10.66.0.3"
 wg_endpoint: "i.ar"
 
