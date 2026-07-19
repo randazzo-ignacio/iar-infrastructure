@@ -99,6 +99,7 @@
   when: nvidia_driver_loaded | bool
 
 # -- CDI specification --
+# /var/run/cdi is tmpfs, cleared on reboot. Create it before generating.
 - name: Ensure CDI directory exists
   file:
     path: /var/run/cdi
@@ -108,19 +109,11 @@
     mode: '0755'
   when: nvidia_driver_loaded | bool
 
-- name: Generate CDI spec to temp file
-  command: nvidia-ctk cdi generate --output=/tmp/nvidia-cdi.yaml.new
+# Generate directly to final path. The spec is deterministic for the same
+# driver/kernel, so changed_when: false is acceptable here.
+- name: Generate CDI specification for Podman
+  command: nvidia-ctk cdi generate --output=/var/run/cdi/nvidia.yaml
   changed_when: false
-  when: nvidia_driver_loaded | bool
-
-- name: Deploy CDI specification for Podman
-  copy:
-    src: /tmp/nvidia-cdi.yaml.new
-    dest: /var/run/cdi/nvidia.yaml
-    remote_src: true
-    owner: root
-    group: root
-    mode: '0644'
   when: nvidia_driver_loaded | bool
 
 - name: Enable nvidia-cdi-refresh path unit
