@@ -98,7 +98,16 @@
     enablerepo: nvidia-container-toolkit
   when: nvidia_driver_loaded | bool
 
-# -- CDI specification (idempotent via copy + remote_src) --
+# -- CDI specification --
+- name: Ensure CDI directory exists
+  file:
+    path: /var/run/cdi
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: nvidia_driver_loaded | bool
+
 - name: Generate CDI spec to temp file
   command: nvidia-ctk cdi generate --output=/tmp/nvidia-cdi.yaml.new
   changed_when: false
