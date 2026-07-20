@@ -1,0 +1,29 @@
+---
+# roles/matrix/defaults/main.yml
+
+# -- Synapse --
+synapse_version: "v1.129.0"
+synapse_port: 8008
+# server_name determines user IDs: @user:matrix.i.ar
+# Using matrix.i.ar (not i.ar) avoids needing .well-known delegation.
+synapse_server_name: "matrix.i.ar"
+synapse_data_dir: "/var/lib/matrix"
+synapse_compose_dir: "/opt/matrix"
+
+# -- PostgreSQL --
+matrix_pg_version: "16-alpine"
+matrix_pg_data_dir: "/var/lib/matrix/postgres"
+matrix_pg_user: "synapse"
+matrix_pg_db: "synapse"
+# Password MUST be set in vault. Blank = fail closed.
+matrix_pg_password: ""
+
+# -- Registration --
+# Shared secret for creating accounts via the register API.
+# MUST be set in vault. Blank = fail closed.
+matrix_registration_shared_secret: ""
+
+# -- Bot accounts --
+# List of bot accounts to create on first deploy.
+# Each entry: { name: "agent-name", display_name: "Agent Name", admin: false }
+matrix_bot_accounts: []

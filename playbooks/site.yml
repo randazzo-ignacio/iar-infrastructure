@@ -101,6 +101,14 @@
     - role: node-exporter
       tags: [node-exporter]
 
+- name: Matrix Synapse (standalone, no federation)
+  hosts: matrix
+  become: true
+  roles:
+    - role: matrix
+      when: matrix_enabled | default(false) | bool
+      tags: [matrix]
+
 - name: i.ar Agent Infrastructure
   hosts: all
   become: true

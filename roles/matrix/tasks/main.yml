@@ -1,0 +1,158 @@
+---
+# roles/matrix/tasks/main.yml
+# Deploys Matrix Synapse (standalone, no federation) via Podman Compose.
+# PostgreSQL backend. Public-facing through Caddy on daftpunk (matrix.i.ar).
+#
+# Two-phase deploy:
+# 1. Generate signing key + log config via Synapse's `generate` command
+# 2. Overwrite homeserver.yaml with our templated config (full control)
+#
+# Bot accounts created via register_new_matrix_user (uses shared secret,
+# works even with enable_registration: false).
+# Access tokens retrieved via login API and printed in playbook output.
+
+# -- Create directories --
+- name: Create matrix compose directory
+  file:
+    path: "{{ synapse_compose_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create Synapse data directory
+  file:
+    path: "{{ synapse_data_dir }}"
+    state: directory
+    owner: 991
+    group: 991
+    mode: '0750'
+
+- name: Create PostgreSQL data directory
+  file:
+    path: "{{ matrix_pg_data_dir }}"
+    state: directory
+    owner: 70
+    group: 70
+    mode: '0700'
+
+# -- Phase 1: Generate signing key + log config (first deploy only) --
+- name: Check if signing key exists
+  stat:
+    path: "{{ synapse_data_dir }}/{{ synapse_server_name }}.signing.key"
+  register: synapse_signing_key_check
+
+- name: Generate Synapse signing key and log config
+  command: >
+    podman run --rm
+    -e SYNAPSE_SERVER_NAME={{ synapse_server_name }}
+    -e SYNAPSE_REPORT_STATS=no
+    -v {{ synapse_data_dir }}:/data:z
+    docker.io/matrixdotorg/synapse:{{ synapse_version }}
+    generate
+  when: not synapse_signing_key_check.stat.exists
+
+# -- Phase 2: Deploy our homeserver.yaml (full template, not lineinfile patching) --
+- name: Deploy homeserver.yaml
+  template:
+    src: homeserver.yaml.j2
+    dest: "{{ synapse_data_dir }}/homeserver.yaml"
+    owner: 991
+    group: 991
+    mode: '0640'
+  notify: restart matrix
+
+# -- Deploy compose file --
+- name: Deploy compose.yml
+  template:
+    src: compose.yml.j2
+    dest: "{{ synapse_compose_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart matrix
+
+# -- Create systemd service --
+- name: Deploy matrix-stack systemd service
+  template:
+    src: matrix-stack.service.j2
+    dest: /etc/systemd/system/matrix-stack.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart matrix
+
+# -- Enable and start --
+- name: Enable and start matrix-stack
+  service:
+    name: matrix-stack
+    state: started
+    enabled: true
+
+# -- Wait for Synapse to be ready --
+- name: Wait for Synapse to be ready
+  uri:
+    url: "http://{{ wg_ip }}:{{ synapse_port }}/_matrix/client/versions"
+    method: GET
+    status_code: [200]
+  register: synapse_ready
+  retries: 15
+  delay: 5
+  until: synapse_ready.status == 200
+  when: matrix_bot_accounts | length > 0
+
+# -- Create bot accounts via register_new_matrix_user --
+# Uses the registration_shared_secret internally, works with enable_registration: false.
+# The script prompts "Make admin [no]" on stdin when -a is NOT passed.
+# We pipe "no" via stdin to avoid EOFError in non-interactive mode.
+# When -a IS passed, the prompt is skipped, so stdin is ignored.
+# Idempotent: "User ID already taken" is not a failure.
+- name: Create bot accounts
+  shell: >
+    echo "no" | podman exec -i matrix-synapse
+    /usr/local/bin/register_new_matrix_user
+    {{ '-a' if item.admin | default(false) | bool else '' }}
+    -u {{ item.name }}
+    -p {{ item.password }}
+    -c /data/homeserver.yaml
+    http://localhost:8008
+  loop: "{{ matrix_bot_accounts }}"
+  when: matrix_bot_accounts | length > 0
+  register: bot_account_results
+  failed_when: >
+    bot_account_results.rc != 0
+    and 'User ID already taken' not in (bot_account_results.stdout | default(''))
+    and 'User ID already taken' not in (bot_account_results.stderr | default(''))
+  changed_when: >
+    'User ID already taken' not in (bot_account_results.stdout | default(''))
+    and 'User ID already taken' not in (bot_account_results.stderr | default(''))
+
+# -- Retrieve access tokens for bot accounts --
+# Logs in via the Matrix client API and extracts the access_token.
+# no_log on the login task hides passwords in the request/response.
+# The debug task below intentionally shows the tokens.
+- name: Login and retrieve access tokens
+  uri:
+    url: "http://{{ wg_ip }}:{{ synapse_port }}/_matrix/client/r0/login"
+    method: POST
+    body_format: json
+    body:
+      type: "m.login.password"
+      identifier:
+        type: "m.id.user"
+        user: "{{ item.name }}"
+      password: "{{ item.password }}"
+      initial_device_display_name: "{{ item.name }}"
+    headers:
+      Content-Type: "application/json"
+    status_code: [200]
+  loop: "{{ matrix_bot_accounts }}"
+  when: matrix_bot_accounts | length > 0
+  register: bot_token_results
+  no_log: true
+
+- name: Print access tokens (copy these to i.ar env vars)
+  debug:
+    msg: "{{ item.item.name | upper | replace('-', '_') }}_MATRIX_TOKEN={{ item.json.access_token }}"
+  loop: "{{ bot_token_results.results | default([]) }}"
+  when: bot_token_results.results | length > 0

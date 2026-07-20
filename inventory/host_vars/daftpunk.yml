@@ -11,6 +11,10 @@ caddy_sites:
     type: proxy
     backend_host: daftpunk
     backend_port: 3000
+  - domain: "matrix.i.ar"
+    type: proxy
+    backend_host: daftpunk
+    backend_port: 8008
 
 # Ollama (CPU-only, 16 cores, 64GB RAM)
 ollama_enabled: true
@@ -25,3 +29,32 @@ tool_static_page_enabled: true
 
 # Monitoring
 monitoring_enabled: true
+
+# Matrix Synapse (standalone, no federation)
+matrix_enabled: true
+synapse_server_name: "matrix.i.ar"
+matrix_bot_accounts:
+  - name: "mirror-bot"
+    display_name: "Mirror"
+    password: "{{ vault_matrix_mirror_bot_password }}"
+    admin: false
+  - name: "darwin-bot"
+    display_name: "Darwin"
+    password: "{{ vault_matrix_darwin_bot_password }}"
+    admin: false
+  - name: "auditor-bot"
+    display_name: "Auditor"
+    password: "{{ vault_matrix_auditor_bot_password }}"
+    admin: false
+  - name: "ctfwizard-bot"
+    display_name: "CTF Wizard"
+    password: "{{ vault_matrix_ctfwizard_bot_password }}"
+    admin: false
+  - name: "gardener-bot"
+    display_name: "Gardener"
+    password: "{{ vault_matrix_gardener_bot_password }}"
+    admin: false
+  - name: "human"
+    display_name: "Human"
+    password: "{{ vault_matrix_human_password }}"
+    admin: true

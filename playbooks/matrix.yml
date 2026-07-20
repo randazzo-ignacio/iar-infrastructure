@@ -1,0 +1,11 @@
+---
+# playbooks/matrix.yml -- Matrix Synapse deployment on daftpunk.
+# Usage: ansible-playbook playbooks/matrix.yml --vault-password-file .vault_pass
+
+- name: Matrix Synapse (standalone, no federation)
+  hosts: matrix
+  become: true
+  roles:
+    - role: matrix
+      when: matrix_enabled | default(false) | bool
+      tags: [matrix]

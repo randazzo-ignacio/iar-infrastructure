@@ -1,0 +1,13 @@
+[Unit]
+Description=Matrix Synapse (standalone, no federation)
+After=network-online.target podman.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/podman compose -f {{ synapse_compose_dir }}/compose.yml up -d
+ExecStop=/usr/bin/podman compose -f {{ synapse_compose_dir }}/compose.yml down
+
+[Install]
+WantedBy=multi-user.target

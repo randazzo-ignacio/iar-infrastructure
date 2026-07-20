@@ -39,3 +39,19 @@ ai_agent_ssh_public_key: "ssh-ed25519 AAAA... ai-agent"
 # Bot token from @BotFather, chat ID from @userinfobot
 iar_telegram_bot_token: "BOT_TOKEN_HERE"
 iar_telegram_chat_id: "CHAT_ID_HERE"
+
+# ── Matrix Synapse ─────────────────────────────────────────
+# PostgreSQL password for the synapse user
+matrix_pg_password: "PASSWORD_HERE"
+
+# Shared secret for account registration via Synapse register API
+matrix_registration_shared_secret: "SHARED_SECRET_HERE"
+
+# ── Matrix bot account passwords ───────────────────────────
+# Per-agent bot accounts for i.ar agent communication
+vault_matrix_mirror_bot_password: "PASSWORD_HERE"
+vault_matrix_darwin_bot_password: "PASSWORD_HERE"
+vault_matrix_auditor_bot_password: "PASSWORD_HERE"
+vault_matrix_ctfwizard_bot_password: "PASSWORD_HERE"
+vault_matrix_gardener_bot_password: "PASSWORD_HERE"
+vault_matrix_human_password: "PASSWORD_HERE"

@@ -1,0 +1,8 @@
+---
+# roles/matrix/handlers/main.yml
+
+- name: restart matrix
+  service:
+    name: matrix-stack
+    state: restarted
+    daemon_reload: true

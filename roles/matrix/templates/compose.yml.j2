@@ -1,0 +1,35 @@
+# {{ ansible_managed }}
+# Matrix Synapse (standalone, no federation) + PostgreSQL
+# Synapse binds to WireGuard IP only -- public access via Caddy on daftpunk.
+
+services:
+  synapse:
+    image: docker.io/matrixdotorg/synapse:{{ synapse_version }}
+    container_name: matrix-synapse
+    restart: unless-stopped
+    ports:
+      - "{{ wg_ip }}:{{ synapse_port }}:8008"
+    volumes:
+      - {{ synapse_data_dir }}:/data:z
+    depends_on:
+      - matrix-db
+    networks:
+      - matrix
+
+  matrix-db:
+    image: docker.io/postgres:{{ matrix_pg_version }}
+    container_name: matrix-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "{{ matrix_pg_user }}"
+      POSTGRES_PASSWORD: "{{ matrix_pg_password }}"
+      POSTGRES_DB: "{{ matrix_pg_db }}"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - {{ matrix_pg_data_dir }}:/var/lib/postgresql/data:z
+    networks:
+      - matrix
+
+networks:
+  matrix:
+    driver: bridge

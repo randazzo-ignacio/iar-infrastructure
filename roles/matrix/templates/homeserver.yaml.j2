@@ -1,0 +1,73 @@
+# {{ ansible_managed }}
+# Matrix Synapse configuration -- standalone, no federation.
+# PostgreSQL backend, single listener on 0.0.0.0:8008.
+# server_name: {{ synapse_server_name }} (user IDs: @user:{{ synapse_server_name }})
+
+server_name: "{{ synapse_server_name }}"
+public_base_url: "https://matrix.i.ar/"
+
+# -- Reporting --
+report_stats: false
+
+# -- Database (PostgreSQL) --
+database:
+  name: psycopg2
+  args:
+    user: "{{ matrix_pg_user }}"
+    password: "{{ matrix_pg_password }}"
+    database: "{{ matrix_pg_db }}"
+    host: matrix-db
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+# -- Listeners --
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client, federation]
+        compress: false
+
+# -- Federation (disabled) --
+allow_public_rooms_over_federation: false
+federation_domain_whitelist: []
+
+# -- Registration --
+registration_shared_secret: "{{ matrix_registration_shared_secret }}"
+enable_registration: false
+
+# -- Logging --
+log_config: "/data/{{ synapse_server_name }}.log.config"
+
+# -- Media --
+media_store_path: "/data/media"
+
+# -- URL previews --
+url_preview_enabled: false
+
+# -- Signing key --
+signing_key_path: "/data/{{ synapse_server_name }}.signing.key"
+
+# -- Trusted key servers --
+trusted_key_servers:
+  - server_name: "matrix.org"
+suppress_key_server_warning: true
+
+# -- Turn server (not needed for bot-only access) --
+turn_uris: []
+
+# -- Rate limiting --
+rc_login:
+  address:
+    per_second: 5
+    burst_count: 10
+  account:
+    per_second: 5
+    burst_count: 10
+
+# -- Experimental features --
+experimental_features: {}
