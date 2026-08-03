@@ -43,6 +43,13 @@
     - role: git-repo
       tags: [git-repo]
 
+- name: pass password manager (client hosts)
+  hosts: yoga, sophon
+  become: true
+  roles:
+    - role: pass
+      tags: [pass]
+
 - name: Podman (all hosts)
   hosts: all
   become: true

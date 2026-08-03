@@ -1,0 +1,18 @@
+---
+# playbooks/pass.yml -- Set up pass (password manager) on client hosts.
+# Usage: ansible-playbook playbooks/pass.yml --ask-vault-pass
+#
+# Runs on yoga + sophon (wherever Nacho needs to look up passwords).
+# The password-store bare repo on rammstein/sophon is created by git-repo role.
+#
+# Prerequisites:
+#   1. git-repo role has been run (password-store bare repo exists on both hosts)
+#   2. GPG key generated on the target host (gpg --full-generate-key)
+#   3. pass_gpg_id set in vault or host_vars
+
+- name: Install and configure pass
+  hosts: yoga, sophon
+  become: true
+  roles:
+    - role: pass
+      tags: [pass]

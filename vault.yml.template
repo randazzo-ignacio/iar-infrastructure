@@ -30,6 +30,14 @@ git_authorized_keys:
   - "ssh-ed25519 AAAA... nacho@yoga"
   - "ssh-ed25519 AAAA... nacho@sophon"
 
+# ── pass GPG key IDs (per host) ─────────────────────────────
+# Generate on each client: gpg --full-generate-key (RSA 4096, no expiry)
+# Then: gpg --list-secret-keys --keyid-format long
+# Each host has its own GPG key for pass encryption.
+pass_gpg_id:
+  yoga: "GPG_KEY_ID_HERE"
+  sophon: "GPG_KEY_ID_HERE"
+
 # ── Frigate RTSP camera credentials ────────────────────────
 # Shared across all cameras (user/password in RTSP URLs)
 frigate_camera_rtsp_user: "CAMERA_USER_HERE"

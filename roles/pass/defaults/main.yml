@@ -1,0 +1,20 @@
+---
+# roles/pass/defaults/main.yml
+
+# GPG key ID to use for pass encryption.
+# Generate with: gpg --full-generate-key (RSA, 4096, no expiry recommended)
+# Then: gpg --list-secret-keys --keyid-format long
+# Set per-host in host_vars (each machine has its own GPG key).
+# Leave empty to skip init (just installs packages).
+pass_gpg_id: ""
+
+# Git remotes for the password-store repo.
+# Format: name => URL (use WG IPs, not DNS)
+# origin is set to rammstein (primary), which mirrors to sophon.
+pass_git_remotes:
+  rammstein: "git@10.66.0.1:/srv/git/password-store.git"
+  sophon: "git@10.66.0.5:/srv/git/password-store.git"
+
+# Git identity for pass repo commits
+pass_git_name: "Nacho Randazzo"
+pass_git_email: "ignacio@randazzo.ar"
