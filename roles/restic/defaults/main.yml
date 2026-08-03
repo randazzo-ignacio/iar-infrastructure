@@ -1,0 +1,48 @@
+---
+# roles/restic/defaults/main.yml
+#
+# Restic backup architecture:
+#   yoga  -> primary: sftp to sophon (local network, fast)
+#         -> remote:  sftp to rammstein (offsite)
+#   sophon -> primary: local disk (/srv/restic)
+#          -> remote:  sftp to rammstein (offsite)
+#
+# Both targets are backed up in a single systemd service run.
+
+# -- Repository paths --
+# Primary (local/fast target). Set per-host in host_vars.
+# On sophon: "/srv/restic" (local disk)
+# On yoga:   "sftp:restic@10.66.0.5:/srv/restic" (sophon over WG)
+restic_primary_repo: ""
+
+# Remote (offsite target). Same for all hosts.
+restic_remote_repo: "sftp:restic@10.66.0.1:/srv/restic"
+
+# -- Restic password (MUST be set in vault) --
+# restic_password: "CHANGE_ME"
+
+# -- What to back up (per-host, set in host_vars) --
+restic_backup_paths: []
+
+# -- What to exclude --
+restic_backup_excludes:
+  - "**/.cache"
+  - "**/__pycache__"
+  - "**/node_modules"
+  - "**/.git/objects"
+
+# -- Schedule --
+restic_backup_on_calendar: "daily"
+restic_check_on_calendar: "weekly"
+
+# -- Retention --
+restic_keep_daily: 7
+restic_keep_weekly: 4
+restic_keep_monthly: 6
+restic_keep_yearly: 1
+
+# -- User --
+restic_user: "nacho"
+
+# -- Binary --
+restic_binary: "/usr/bin/restic"

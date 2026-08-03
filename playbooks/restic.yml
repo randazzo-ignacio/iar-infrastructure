@@ -1,0 +1,19 @@
+---
+# playbooks/restic.yml -- Set up restic backup on client hosts.
+# Usage: ansible-playbook playbooks/restic.yml --ask-vault-pass
+#
+# Runs on rammstein (creates restic user + repo dir), sophon (local repo +
+# backup client), and yoga (backup client only).
+#
+# Prerequisites:
+#   1. restic_password set in vault
+#   2. restic_primary_repo set per-host in host_vars
+#   3. restic_backup_paths set per-host in host_vars
+#   4. SSH keys for restic SFTP access authorized on target hosts
+
+- name: Restic backup setup
+  hosts: rammstein, sophon, yoga
+  become: true
+  roles:
+    - role: restic
+      tags: [restic]

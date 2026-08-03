@@ -50,6 +50,10 @@ base_packages:
   # Diagnostic
   - net-tools
   - bind-utils
+  # GPG and pass
+  - pass
+  - gnupg2
+  - pinentry
 
 # ── Shared service ports ───────────────────────────────────
 # Used by multiple roles (node-exporter + monitoring)

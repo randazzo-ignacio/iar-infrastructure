@@ -71,3 +71,8 @@ frigate_cameras:
 
 # Git bare repos -- mirror to rammstein
 git_mirror_target: "git@10.66.0.1:/srv/git"
+# Restic backup
+restic_primary_repo: "/srv/restic"
+restic_backup_paths:
+  - /home/nacho/repos
+  - /home/nacho/.config

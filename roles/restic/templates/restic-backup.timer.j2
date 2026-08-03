@@ -1,0 +1,10 @@
+[Unit]
+Description=Restic backup timer
+Requires=restic-backup.service
+
+[Timer]
+OnCalendar={{ restic_backup_on_calendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

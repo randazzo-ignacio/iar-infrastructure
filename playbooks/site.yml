@@ -50,6 +50,13 @@
     - role: pass
       tags: [pass]
 
+- name: Restic backup (all hosts)
+  hosts: rammstein, sophon, yoga
+  become: true
+  roles:
+    - role: restic
+      tags: [restic]
+
 - name: Podman (all hosts)
   hosts: all
   become: true

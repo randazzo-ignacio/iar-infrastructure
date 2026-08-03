@@ -1,0 +1,152 @@
+---
+# roles/restic/tasks/main.yml
+# Sets up restic backup with dual targets (primary + remote on rammstein).
+#
+# Architecture:
+#   yoga   -> primary: sftp to sophon (local network, fast)
+#           -> remote:  sftp to rammstein (offsite)
+#   sophon -> primary: local disk (/srv/restic)
+#           -> remote:  sftp to rammstein (offsite)
+#
+# The systemd service backs up to BOTH targets in one run.
+# A weekly check verifies repository integrity.
+# Retention policy prunes old snapshots after each backup.
+
+# -- Install restic --
+- name: Install restic
+  dnf:
+    name: restic
+    state: present
+  when: manage_packages | default(true) | bool
+
+# -- Password file --
+- name: Set restic password file path
+  set_fact:
+    restic_password_file: "/home/{{ restic_user }}/.config/restic-password"
+
+- name: Ensure config directory exists
+  file:
+    path: "/home/{{ restic_user }}/.config"
+    state: directory
+    owner: "{{ restic_user }}"
+    group: "{{ restic_user }}"
+    mode: '0700'
+
+- name: Create restic password file
+  copy:
+    dest: "{{ restic_password_file }}"
+    content: "{{ restic_password }}\n"
+    owner: "{{ restic_user }}"
+    group: "{{ restic_user }}"
+    mode: '0600'
+  no_log: true
+
+# -- Create restic user on rammstein (SFTP target for remote backups) --
+- name: Create restic user on rammstein
+  user:
+    name: restic
+    shell: /usr/sbin/nologin
+    home: "/srv/restic"
+    system: true
+    create_home: false
+  when: inventory_hostname == 'rammstein'
+
+- name: Ensure remote restic repo directory exists (on rammstein)
+  file:
+    path: "/srv/restic"
+    state: directory
+    owner: restic
+    group: restic
+    mode: '0700'
+  when: inventory_hostname == 'rammstein'
+
+- name: Initialize remote restic repo (on rammstein)
+  command: "{{ restic_binary }} --repo /srv/restic init"
+  args:
+    creates: "/srv/restic/config"
+  become_user: restic
+  environment:
+    RESTIC_PASSWORD: "{{ restic_password }}"
+  when: inventory_hostname == 'rammstein'
+
+# -- Create local repo on sophon (primary backup target for sophon itself) --
+- name: Ensure local restic repo directory exists (on sophon)
+  file:
+    path: "/srv/restic"
+    state: directory
+    owner: "{{ restic_user }}"
+    group: "{{ restic_user }}"
+    mode: '0700'
+  when: inventory_hostname == 'sophon'
+
+- name: Initialize local restic repo (on sophon)
+  command: "{{ restic_binary }} --repo /srv/restic init"
+  args:
+    creates: "/srv/restic/config"
+  become_user: "{{ restic_user }}"
+  environment:
+    RESTIC_PASSWORD: "{{ restic_password }}"
+  when: inventory_hostname == 'sophon'
+
+# -- SSH key for SFTP access to remote repos --
+# yoga SFTPs to sophon (primary) and rammstein (remote)
+# sophon SFTPs to rammstein (remote)
+- name: Ensure SSH key exists for restic SFTP
+  openssh_keypair:
+    path: "/home/{{ restic_user }}/.ssh/restic_key"
+    type: ed25519
+    owner: "{{ restic_user }}"
+    group: "{{ restic_user }}"
+    mode: '0600'
+  become_user: "{{ restic_user }}"
+  when: inventory_hostname != 'rammstein'
+
+# -- Deploy systemd services + timers --
+- name: Deploy restic backup service
+  template:
+    src: restic-backup.service.j2
+    dest: /etc/systemd/system/restic-backup.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy restic backup timer
+  template:
+    src: restic-backup.timer.j2
+    dest: /etc/systemd/system/restic-backup.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy restic check service
+  template:
+    src: restic-check.service.j2
+    dest: /etc/systemd/system/restic-check.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Deploy restic check timer
+  template:
+    src: restic-check.timer.j2
+    dest: /etc/systemd/system/restic-check.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+# -- Enable and start timers --
+- name: Enable restic backup timer
+  service:
+    name: restic-backup.timer
+    state: started
+    enabled: true
+
+- name: Enable restic check timer
+  service:
+    name: restic-check.timer
+    state: started
+    enabled: true

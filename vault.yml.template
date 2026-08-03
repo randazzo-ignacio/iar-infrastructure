@@ -38,6 +38,12 @@ pass_gpg_id:
   yoga: "GPG_KEY_ID_HERE"
   sophon: "GPG_KEY_ID_HERE"
 
+# ── Restic backup password ─────────────────────────────────
+# Used to encrypt all restic repositories (local + remote).
+# Choose a strong passphrase. Store in pass after setup.
+# Also store on paper in secure physical location (DRP).
+restic_password: "CHANGE_ME"
+
 # ── Frigate RTSP camera credentials ────────────────────────
 # Shared across all cameras (user/password in RTSP URLs)
 frigate_camera_rtsp_user: "CAMERA_USER_HERE"

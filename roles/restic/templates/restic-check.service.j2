@@ -1,0 +1,10 @@
+[Unit]
+Description=Restic repository integrity check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=RESTIC_PASSWORD_FILE={{ restic_password_file }}
+ExecStart=/bin/sh -c '{{ restic_binary }} --repo {{ restic_primary_repo }} check 2>/dev/null || true'
+ExecStartPost=/bin/sh -c '{{ restic_binary }} --repo {{ restic_remote_repo }} check 2>/dev/null || true'

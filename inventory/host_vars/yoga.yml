@@ -4,3 +4,11 @@ wg_ip: "10.66.0.4"
 
 # Fedora Silverblue uses rpm-ostree, not dnf
 manage_packages: false
+
+# Restic backup
+restic_primary_repo: "sftp:restic@10.66.0.5:/srv/restic"
+restic_backup_paths:
+  - /home/nacho/Documents
+  - /home/nacho/repos
+  - /home/nacho/.config
+  - /home/nacho/.ssh

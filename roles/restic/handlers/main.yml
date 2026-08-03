@@ -1,0 +1,6 @@
+---
+# roles/restic/handlers/main.yml
+
+- name: reload systemd
+  systemd:
+    daemon_reload: true
