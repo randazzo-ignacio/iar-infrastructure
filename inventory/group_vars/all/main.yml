@@ -6,6 +6,18 @@ domains:
   proxy_alt: "randazzo.com.ar"
   project: "i.ar"
 
+# ── Git bare repos ─────────────────────────────────────────
+# Single source of truth for repo names. Applied to all git_servers.
+# Mirror target is set per-host (each host mirrors to the other).
+git_bare_repos:
+  - finance
+  - inventory
+  - notes
+  - concepts
+  - references
+  - kicad-projects
+  - password-store
+
 # ── WireGuard (shared) ─────────────────────────────────────
 # Hub-and-spoke mesh. rammstein is the hub (wg_hub group).
 # wg_network MUST be a full CIDR (e.g. 10.66.0.0/16) -- the subnet

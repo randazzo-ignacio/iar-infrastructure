@@ -69,13 +69,5 @@ frigate_cameras:
     rtsp_path: "/ch0"
     roles: [detect, record, audio]
 
-# Git bare repos (mirror -- mirrors back to rammstein)
-git_bare_repos:
-  - finance
-  - inventory
-  - notes
-  - concepts
-  - references
-  - kicad-projects
-  - password-store
+# Git bare repos -- mirror to rammstein
 git_mirror_target: "git@10.66.0.1:/srv/git"
