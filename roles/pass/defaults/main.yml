@@ -4,13 +4,12 @@
 # GPG key ID to use for pass encryption.
 # Generate with: gpg --full-generate-key (RSA, 4096, no expiry recommended)
 # Then: gpg --list-secret-keys --keyid-format long
-# Set per-host in host_vars (each machine has its own GPG key).
+# Set in vault as pass_gpg_id.yoga (yoga is the only pass client).
 # Leave empty to skip init (just installs packages).
 pass_gpg_id: ""
 
 # Git remotes for the password-store repo.
-# Format: name => URL (use WG IPs, not DNS)
-# origin is set to rammstein (primary), which mirrors to sophon.
+# origin = rammstein (primary, auto-mirrors to sophon via post-receive hook).
 pass_git_remotes:
   rammstein: "git@10.66.0.1:/srv/git/password-store.git"
   sophon: "git@10.66.0.5:/srv/git/password-store.git"

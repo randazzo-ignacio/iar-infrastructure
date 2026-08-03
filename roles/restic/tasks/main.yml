@@ -8,6 +8,9 @@
 #   sophon -> primary: local disk (/srv/restic)
 #           -> remote:  sftp to rammstein (offsite)
 #
+# SSH access: the ansible user's authorized_keys are copied to the restic
+# user on rammstein. No separate keys -- same rationale as git-repo role.
+#
 # The systemd service backs up to BOTH targets in one run.
 # A weekly check verifies repository integrity.
 # Retention policy prunes old snapshots after each backup.
@@ -60,6 +63,30 @@
     mode: '0700'
   when: inventory_hostname == 'rammstein'
 
+- name: Ensure .ssh directory exists for restic user (on rammstein)
+  file:
+    path: "/srv/restic/.ssh"
+    state: directory
+    owner: restic
+    group: restic
+    mode: '0700'
+  when: inventory_hostname == 'rammstein'
+
+- name: Copy ansible user's authorized_keys to restic user (on rammstein)
+  slurp:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+  register: ansible_auth_keys
+  when: inventory_hostname == 'rammstein'
+
+- name: Authorize ansible keys for restic user (on rammstein)
+  copy:
+    dest: "/srv/restic/.ssh/authorized_keys"
+    content: "{{ ansible_auth_keys['content'] | b64decode }}"
+    owner: restic
+    group: restic
+    mode: '0600'
+  when: inventory_hostname == 'rammstein'
+
 - name: Initialize remote restic repo (on rammstein)
   command: "{{ restic_binary }} --repo /srv/restic init"
   args:
@@ -87,19 +114,6 @@
   environment:
     RESTIC_PASSWORD: "{{ restic_password }}"
   when: inventory_hostname == 'sophon'
-
-# -- SSH key for SFTP access to remote repos --
-# yoga SFTPs to sophon (primary) and rammstein (remote)
-# sophon SFTPs to rammstein (remote)
-- name: Ensure SSH key exists for restic SFTP
-  openssh_keypair:
-    path: "/home/{{ restic_user }}/.ssh/restic_key"
-    type: ed25519
-    owner: "{{ restic_user }}"
-    group: "{{ restic_user }}"
-    mode: '0600'
-  become_user: "{{ restic_user }}"
-  when: inventory_hostname != 'rammstein'
 
 # -- Deploy systemd services + timers --
 - name: Deploy restic backup service

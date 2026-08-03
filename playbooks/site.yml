@@ -43,14 +43,14 @@
     - role: git-repo
       tags: [git-repo]
 
-- name: pass password manager (client hosts)
-  hosts: yoga, sophon
+- name: pass password manager (yoga only)
+  hosts: yoga
   become: true
   roles:
     - role: pass
       tags: [pass]
 
-- name: Restic backup (all hosts)
+- name: Restic backup (yoga + rammstein + sophon)
   hosts: rammstein, sophon, yoga
   become: true
   roles:

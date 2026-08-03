@@ -8,18 +8,11 @@ git_repo_root: "/srv/git"
 git_repo_user: "git"
 
 # List of repo names to create (without .git suffix)
-# Set in host_vars. Example:
-#   git_bare_repos:
-#     - finance
-#     - notes
-#     - inventory
+# Defined in group_vars/all/main.yml (single source of truth)
 git_bare_repos: []
 
-# SSH public keys authorized to access the git user (client keys)
-# Set in host_vars or vault. Example:
-#   git_authorized_keys:
-#     - "ssh-ed25519 AAAA... nacho@yoga"
-#     - "ssh-ed25519 AAAA... nacho@sophon"
+# SSH authorized keys: copied from the ansible user's authorized_keys.
+# No separate keys -- the ansible key already has full access to the host.
 git_authorized_keys: []
 
 # Mirror configuration -- set on BOTH hosts if mirroring is desired.

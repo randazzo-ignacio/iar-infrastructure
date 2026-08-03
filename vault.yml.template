@@ -6,8 +6,8 @@
 # If a new secret is added, add it here first.
 #
 # Consolidated 2026-08-04: daftpunk + greenday killed.
-# Removed: daftpunk/greenday WG keys, Grafana creds, AI agent SSH key,
-# Matrix bot passwords, Matrix PG/registration secrets.
+# SSH keys: ansible user's authorized_keys copied to git + restic users.
+# No separate keys -- if ansible key is compromised, everything else is too.
 
 # ── WireGuard private keys (per host) ──────────────────────
 # Generate with: wg genkey | tee /tmp/<host>.key | wg pubkey > /tmp/<host>.pub
@@ -23,20 +23,11 @@ wg_public_keys:
   sophon: "PUBLIC_KEY_HERE"
   yoga: "PUBLIC_KEY_HERE"
 
-# ── Git bare repo SSH authorized keys ──────────────────────
-# Public SSH keys for clients that can push/pull to git@rammstein / git@sophon
-# Generate on each client: ssh-keygen -t ed25519 -f ~/.ssh/git_key
-git_authorized_keys:
-  - "ssh-ed25519 AAAA... nacho@yoga"
-  - "ssh-ed25519 AAAA... nacho@sophon"
-
-# ── pass GPG key IDs (per host) ─────────────────────────────
-# Generate on each client: gpg --full-generate-key (RSA 4096, no expiry)
+# ── pass GPG key ID (yoga only) ─────────────────────────────
+# Generate on yoga: gpg --full-generate-key (RSA 4096, no expiry)
 # Then: gpg --list-secret-keys --keyid-format long
-# Each host has its own GPG key for pass encryption.
 pass_gpg_id:
   yoga: "GPG_KEY_ID_HERE"
-  sophon: "GPG_KEY_ID_HERE"
 
 # ── Restic backup password ─────────────────────────────────
 # Used to encrypt all restic repositories (local + remote).

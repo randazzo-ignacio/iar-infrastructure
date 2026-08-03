@@ -7,9 +7,8 @@
 # No browser extension, no mobile sync -- just `pass show <entry>`.
 # The git repo is backed up to self-hosted bare repos on rammstein + sophon.
 #
-# This role runs on client hosts (yoga, sophon) -- wherever Nacho needs
-# to look up passwords. The password-store bare repo on rammstein/sophon
-# is already created by the git-repo role.
+# This role runs on yoga only (daily driver, where Nacho looks up passwords).
+# The password-store bare repo on rammstein/sophon is created by git-repo role.
 
 # -- Resolve per-host GPG key ID --
 - name: Resolve GPG key ID for this host

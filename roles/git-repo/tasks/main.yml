@@ -3,12 +3,13 @@
 # Creates bare git repos on a host, accessible over SSH via git-shell.
 # Deployed on rammstein (primary) and sophon (mirror).
 #
+# SSH access: the ansible user's authorized_keys are copied to the git
+# user. No separate SSH keys -- if the ansible key is compromised, everything
+# else is too. Separate keys add complexity without adding security.
+#
 # Topology: clients push to either host. Each host has a post-receive
 # hook that mirrors to the other. If one is down, the mirror hook
 # silently fails (|| true) and catches up on next push.
-#
-# SSH access: clients use `git@<wg_ip>:/srv/git/<repo>.git`
-# The git user has git-shell, so no shell access -- git operations only.
 
 # -- Create git user --
 - name: Create git user
@@ -28,7 +29,12 @@
     group: "{{ git_repo_user }}"
     mode: '0755'
 
-# -- Set up SSH directory for git user --
+# -- Copy ansible user's authorized_keys to git user --
+- name: Read ansible user's authorized_keys
+  slurp:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+  register: ansible_auth_keys
+
 - name: Ensure .ssh directory exists for git user
   file:
     path: "{{ git_repo_root }}/.ssh"
@@ -37,13 +43,13 @@
     group: "{{ git_repo_user }}"
     mode: '0700'
 
-- name: Authorize SSH keys for git user
-  authorized_key:
-    user: "{{ git_repo_user }}"
-    key: "{{ item }}"
-    state: present
-  loop: "{{ git_authorized_keys }}"
-  no_log: true
+- name: Authorize ansible keys for git user
+  copy:
+    dest: "{{ git_repo_root }}/.ssh/authorized_keys"
+    content: "{{ ansible_auth_keys['content'] | b64decode }}"
+    owner: "{{ git_repo_user }}"
+    group: "{{ git_repo_user }}"
+    mode: '0600'
 
 # -- Create bare repos --
 - name: Create bare repo directories
