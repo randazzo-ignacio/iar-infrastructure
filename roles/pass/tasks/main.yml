@@ -11,6 +11,11 @@
 # to look up passwords. The password-store bare repo on rammstein/sophon
 # is already created by the git-repo role.
 
+# -- Resolve per-host GPG key ID --
+- name: Resolve GPG key ID for this host
+  set_fact:
+    pass_local_gpg_id: "{{ pass_gpg_id[inventory_hostname] | default('') }}"
+
 # -- Install pass + gnupg --
 - name: Install pass and GnuPG
   dnf:
@@ -22,7 +27,7 @@
   when: manage_packages | default(true) | bool
 
 # -- Initialize password store --
-# Only run if pass_gpg_id is set AND ~/.password-store doesn't exist yet.
+# Only run if GPG key ID is set AND ~/.password-store doesn't exist yet.
 # If the store already exists (cloned from remote), skip init.
 - name: Check if password store already exists
   stat:
@@ -31,12 +36,12 @@
   become: false
 
 - name: Initialize password store with GPG key
-  command: "pass init {{ pass_gpg_id }}"
+  command: "pass init {{ pass_local_gpg_id }}"
   args:
     creates: "~/.password-store/.gpg-id"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
 # -- Configure git for the password store --
@@ -51,7 +56,7 @@
     - { name: "user.email", value: "{{ pass_git_email }}" }
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
 # -- Initialize git in the password store --
@@ -61,12 +66,13 @@
     creates: "~/.password-store/.git"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
 # -- Add remotes --
 # Both rammstein and sophon have the password-store bare repo (from git-repo role).
-# pass git push pushes to origin (rammstein), which mirrors to sophon.
+# origin = rammstein (primary, auto-mirrors to sophon via post-receive hook).
+# sophon = secondary remote (can push directly if rammstein is down).
 - name: Add git remotes to password store
   command: "pass git remote add {{ item.key }} {{ item.value }}"
   args:
@@ -74,20 +80,17 @@
   loop: "{{ pass_git_remotes | dict2items }}"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
   ignore_errors: true  # remote may already exist
 
-# -- Set origin push URL to include both remotes --
-# `pass git push` pushes to origin. We set origin to rammstein
-# (which auto-mirrors to sophon via post-receive hook).
 - name: Set origin to rammstein (primary remote)
   command: "pass git remote set-url origin {{ pass_git_remotes.rammstein }}"
   args:
     chdir: "~/.password-store"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
 # -- Initial commit + push --
@@ -97,7 +100,7 @@
     chdir: "~/.password-store"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
 - name: Push password store to remotes
@@ -106,6 +109,6 @@
     chdir: "~/.password-store"
   become: false
   when:
-    - pass_gpg_id | length > 0
+    - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
   ignore_errors: true  # remote may not be reachable yet
