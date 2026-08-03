@@ -25,4 +25,4 @@ static_page_root: "/var/www/i.ar"
 tool_static_page_enabled: true
 
 # Git bare repos -- mirror to sophon
-git_mirror_target: "git@10.66.0.5:/srv/git"
+git_mirror_target: "git@10.66.0.5:/home/git/repos"

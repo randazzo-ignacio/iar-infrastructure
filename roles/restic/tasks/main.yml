@@ -5,11 +5,18 @@
 # Architecture:
 #   yoga   -> primary: sftp to sophon (local network, fast)
 #           -> remote:  sftp to rammstein (offsite)
-#   sophon -> primary: local disk (/srv/restic)
+#   sophon -> primary: local disk (/home/restic/backups)
 #           -> remote:  sftp to rammstein (offsite)
+#   rammstein -> SFTP target only (no local backups)
 #
 # SSH access: the ansible user's authorized_keys are copied to the restic
-# user on rammstein. No separate keys -- same rationale as git-repo role.
+# user on rammstein AND sophon. No separate keys -- same rationale as git-repo role.
+#
+# The restic user's shell is set to the SFTP server binary directly.
+# This avoids ForceCommand internal-sftp, which triggers an SELinux
+# domain transition to sftpd_t that is locked down on Fedora. By making
+# the shell BE the SFTP server, no ForceCommand is needed and no
+# domain transition occurs.
 #
 # The systemd service backs up to BOTH targets in one run.
 # A weekly check verifies repository integrity.
@@ -22,100 +29,104 @@
     state: present
   when: manage_packages | default(true) | bool
 
+# ============================================================
+# CLIENT-SIDE SETUP (yoga, sophon -- hosts that run backups)
+# ============================================================
+
 # -- Password file --
 - name: Set restic password file path
   set_fact:
-    restic_password_file: "/home/{{ restic_user }}/.config/restic-password"
+    restic_password_file: "/home/{{ ansible_user }}/.config/restic-password"
+  when: restic_backup_paths | length > 0
 
 - name: Ensure config directory exists
   file:
-    path: "/home/{{ restic_user }}/.config"
+    path: "/home/{{ ansible_user }}/.config"
     state: directory
-    owner: "{{ restic_user }}"
-    group: "{{ restic_user }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0700'
+  when: restic_backup_paths | length > 0
 
 - name: Create restic password file
   copy:
     dest: "{{ restic_password_file }}"
     content: "{{ restic_password }}\n"
-    owner: "{{ restic_user }}"
-    group: "{{ restic_user }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0600'
   no_log: true
+  when: restic_backup_paths | length > 0
 
-# -- Create restic user on rammstein (SFTP target for remote backups) --
-- name: Create restic user on rammstein
+# ============================================================
+# SERVER-SIDE SETUP (rammstein + sophon -- SFTP targets)
+# Both rammstein and sophon receive SFTP backups from yoga.
+# Sophon also uses /home/restic/backups locally for its own backups.
+# ============================================================
+
+# -- Add SFTP server to /etc/shells so it's accepted as a valid shell --
+- name: Ensure SFTP server binary is in /etc/shells
+  lineinfile:
+    path: /etc/shells
+    line: "/usr/libexec/openssh/sftp-server"
+    state: present
+  when: inventory_hostname in ['rammstein', 'sophon']
+
+- name: Create restic user on SFTP target hosts
   user:
     name: restic
-    shell: /usr/sbin/nologin
-    home: "/srv/restic"
+    shell: "/usr/libexec/openssh/sftp-server"
+    home: "/home/restic"
     system: true
-    create_home: false
-  when: inventory_hostname == 'rammstein'
+    create_home: true
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-- name: Ensure remote restic repo directory exists (on rammstein)
+- name: Ensure restic backup directory exists on SFTP target hosts
   file:
-    path: "/srv/restic"
+    path: "/home/restic/backups"
     state: directory
     owner: restic
     group: restic
     mode: '0700'
-  when: inventory_hostname == 'rammstein'
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-- name: Ensure .ssh directory exists for restic user (on rammstein)
+- name: Ensure .ssh directory exists for restic user on SFTP target hosts
   file:
-    path: "/srv/restic/.ssh"
+    path: "/home/restic/.ssh"
     state: directory
     owner: restic
     group: restic
     mode: '0700'
-  when: inventory_hostname == 'rammstein'
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-- name: Copy ansible user's authorized_keys to restic user (on rammstein)
+- name: Copy ansible user's authorized_keys to restic user on SFTP target hosts
   slurp:
     path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
   register: ansible_auth_keys
-  when: inventory_hostname == 'rammstein'
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-- name: Authorize ansible keys for restic user (on rammstein)
+- name: Authorize ansible keys for restic user on SFTP target hosts
   copy:
-    dest: "/srv/restic/.ssh/authorized_keys"
+    dest: "/home/restic/.ssh/authorized_keys"
     content: "{{ ansible_auth_keys['content'] | b64decode }}"
     owner: restic
     group: restic
     mode: '0600'
-  when: inventory_hostname == 'rammstein'
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-- name: Initialize remote restic repo (on rammstein)
-  command: "{{ restic_binary }} --repo /srv/restic init"
+- name: Initialize restic repo on SFTP target hosts
+  command: "{{ restic_binary }} --repo /home/restic/backups init"
   args:
-    creates: "/srv/restic/config"
+    creates: "/home/restic/backups/config"
   become_user: restic
   environment:
     RESTIC_PASSWORD: "{{ restic_password }}"
-  when: inventory_hostname == 'rammstein'
+  when: inventory_hostname in ['rammstein', 'sophon']
 
-# -- Create local repo on sophon (primary backup target for sophon itself) --
-- name: Ensure local restic repo directory exists (on sophon)
-  file:
-    path: "/srv/restic"
-    state: directory
-    owner: "{{ restic_user }}"
-    group: "{{ restic_user }}"
-    mode: '0700'
-  when: inventory_hostname == 'sophon'
+# ============================================================
+# SYSTEMD SERVICES + TIMERS (client hosts only)
+# ============================================================
 
-- name: Initialize local restic repo (on sophon)
-  command: "{{ restic_binary }} --repo /srv/restic init"
-  args:
-    creates: "/srv/restic/config"
-  become_user: "{{ restic_user }}"
-  environment:
-    RESTIC_PASSWORD: "{{ restic_password }}"
-  when: inventory_hostname == 'sophon'
-
-# -- Deploy systemd services + timers --
 - name: Deploy restic backup service
   template:
     src: restic-backup.service.j2
@@ -124,6 +135,7 @@
     group: root
     mode: '0644'
   notify: reload systemd
+  when: restic_backup_paths | length > 0
 
 - name: Deploy restic backup timer
   template:
@@ -133,6 +145,7 @@
     group: root
     mode: '0644'
   notify: reload systemd
+  when: restic_backup_paths | length > 0
 
 - name: Deploy restic check service
   template:
@@ -142,6 +155,7 @@
     group: root
     mode: '0644'
   notify: reload systemd
+  when: restic_backup_paths | length > 0
 
 - name: Deploy restic check timer
   template:
@@ -151,6 +165,7 @@
     group: root
     mode: '0644'
   notify: reload systemd
+  when: restic_backup_paths | length > 0
 
 # -- Enable and start timers --
 - name: Enable restic backup timer
@@ -158,9 +173,11 @@
     name: restic-backup.timer
     state: started
     enabled: true
+  when: restic_backup_paths | length > 0
 
 - name: Enable restic check timer
   service:
     name: restic-check.timer
     state: started
     enabled: true
+  when: restic_backup_paths | length > 0

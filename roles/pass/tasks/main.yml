@@ -26,8 +26,7 @@
   when: manage_packages | default(true) | bool
 
 # -- Initialize password store --
-# Only run if GPG key ID is set AND ~/.password-store doesn't exist yet.
-# If the store already exists (cloned from remote), skip init.
+# Only run if GPG key ID is set AND ~/.password-store/.gpg-id doesn't exist yet.
 - name: Check if password store already exists
   stat:
     path: "~/.password-store/.gpg-id"
@@ -43,6 +42,24 @@
     - pass_local_gpg_id | length > 0
     - not pass_store.stat.exists
 
+# -- Initialize git in the password store --
+# Independent condition: check for .git, not .gpg-id.
+# This handles partial failures where pass init succeeded but git init didn't.
+- name: Check if git is initialized in password store
+  stat:
+    path: "~/.password-store/.git"
+  register: pass_git
+  become: false
+
+- name: Initialize git in password store
+  command: "pass git init"
+  args:
+    creates: "~/.password-store/.git"
+  become: false
+  when:
+    - pass_local_gpg_id | length > 0
+    - not pass_git.stat.exists
+
 # -- Configure git for the password store --
 - name: Configure git identity for password store
   git_config:
@@ -56,17 +73,7 @@
   become: false
   when:
     - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
-
-# -- Initialize git in the password store --
-- name: Initialize git in password store
-  command: "pass git init"
-  args:
-    creates: "~/.password-store/.git"
-  become: false
-  when:
-    - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
+    - not pass_git.stat.exists
 
 # -- Add remotes --
 # Both rammstein and sophon have the password-store bare repo (from git-repo role).
@@ -80,7 +87,7 @@
   become: false
   when:
     - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
+    - not pass_git.stat.exists
   ignore_errors: true  # remote may already exist
 
 - name: Set origin to rammstein (primary remote)
@@ -90,7 +97,7 @@
   become: false
   when:
     - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
+    - not pass_git.stat.exists
 
 # -- Initial commit + push --
 - name: Initial commit of password store
@@ -100,7 +107,7 @@
   become: false
   when:
     - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
+    - not pass_git.stat.exists
 
 - name: Push password store to remotes
   command: "pass git push -u origin main"
@@ -109,5 +116,5 @@
   become: false
   when:
     - pass_local_gpg_id | length > 0
-    - not pass_store.stat.exists
+    - not pass_git.stat.exists
   ignore_errors: true  # remote may not be reachable yet
