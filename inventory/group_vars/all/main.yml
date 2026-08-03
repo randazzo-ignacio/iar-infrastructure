@@ -1,10 +1,10 @@
 # ── Domains ───────────────────────────────────────────────
 # Single source of truth for domain names. Used by caddy, static-site.
+# Consolidated 2026-08-04: 0b.ar dropped, i.ar moved to rammstein.
 domains:
   proxy: "randazzo.ar"
   proxy_alt: "randazzo.com.ar"
-  ollama: "i.ar"
-  ai: "0b.ar"
+  project: "i.ar"
 
 # ── WireGuard (shared) ─────────────────────────────────────
 # Hub-and-spoke mesh. rammstein is the hub (wg_hub group).

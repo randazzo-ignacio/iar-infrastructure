@@ -2,7 +2,7 @@ ansible_user: riemann
 wg_ip: "10.66.0.1"
 wg_endpoint: "randazzo.ar"
 
-# Caddy sites
+# Caddy sites -- rammstein now serves ALL domains
 caddy_sites:
   - domain: "randazzo.ar"
     type: static
@@ -14,7 +14,12 @@ caddy_sites:
     type: proxy
     backend_host: sophon
     backend_port: 8971
+  - domain: "i.ar"
+    type: static
+    root: "/var/www/i.ar"
 
-# Static site
+# Static sites -- both deployed by static-site role
 portfolio_page_root: "/var/www/randazzo.ar"
 portfolio_page_enabled: true
+static_page_root: "/var/www/i.ar"
+tool_static_page_enabled: true

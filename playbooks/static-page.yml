@@ -1,5 +1,5 @@
 ---
-# playbooks/static-page.yml -- Deploy emacboros landing page to daftpunk.
+# playbooks/static-page.yml -- Deploy i.ar landing page to rammstein.
 # Usage: ansible-playbook playbooks/static-page.yml --ask-vault-pass
 
 - name: Deploy landing page

@@ -1,6 +1,10 @@
 ---
 # playbooks/site.yml -- Master playbook: runs all roles in order.
 # Usage: ansible-playbook playbooks/site.yml --ask-vault-pass
+#
+# Consolidated 2026-08-04: daftpunk + greenday killed.
+# Removed: ai_playground, monitoring, matrix, node-exporter groups.
+# rammstein is sole VPS. sophon is local GPU + Frigate. yoga is daily driver.
 
 - name: Base configuration (all hosts)
   hosts: all
@@ -46,13 +50,6 @@
     - role: nvidia
       tags: [nvidia]
 
-- name: AI playground
-  hosts: ai_playground
-  become: true
-  roles:
-    - role: ai-environment
-      tags: [ai-environment]
-
 - name: Ollama hosts
   hosts: ollama_hosts
   become: true
@@ -85,29 +82,6 @@
         static_site_dest: "{{ static_page_root }}"
       when: tool_static_page_enabled | default(false) | bool
       tags: [static-site]
-
-- name: Monitoring
-  hosts: monitoring
-  become: true
-  roles:
-    - role: monitoring
-      when: monitoring_enabled | default(false) | bool
-      tags: [monitoring]
-
-- name: Node exporters (all hosts)
-  hosts: all
-  become: true
-  roles:
-    - role: node-exporter
-      tags: [node-exporter]
-
-- name: Matrix Synapse (standalone, no federation)
-  hosts: matrix
-  become: true
-  roles:
-    - role: matrix
-      when: matrix_enabled | default(false) | bool
-      tags: [matrix]
 
 - name: i.ar Agent Infrastructure
   hosts: all
