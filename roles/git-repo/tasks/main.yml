@@ -7,6 +7,11 @@
 # user. No separate SSH keys -- if the ansible key is compromised, everything
 # else is too. Separate keys add complexity without adding security.
 #
+# Mirror access: the git user gets its own SSH keypair for pushing to
+# the mirror target. Each host's git public key is added to the other
+# host's git authorized_keys. The mirror target's host key is pre-populated
+# in the git user's known_hosts to avoid interactive host key verification.
+#
 # Topology: clients push to either host. Each host has a post-receive
 # hook that mirrors to the other. If one is down, the mirror hook
 # silently fails (|| true) and catches up on next push.
@@ -50,6 +55,57 @@
     owner: "{{ git_repo_user }}"
     group: "{{ git_repo_user }}"
     mode: '0600'
+
+# -- Generate SSH keypair for git user (for mirror pushes) --
+- name: Generate SSH key for git user
+  openssh_keypair:
+    path: "{{ git_repo_root }}/.ssh/id_ed25519"
+    type: ed25519
+    owner: "{{ git_repo_user }}"
+    group: "{{ git_repo_user }}"
+    comment: "git-mirror@{{ inventory_hostname }}"
+  register: git_ssh_key
+
+- name: Read git user's public key
+  slurp:
+    path: "{{ git_repo_root }}/.ssh/id_ed25519.pub"
+  register: git_public_key
+
+# -- Add this host's git key to the mirror target's authorized_keys --
+# Uses delegate_to to run on the mirror host (by inventory name, not SSH alias).
+# The ansible user on the mirror host has sudo, so this works.
+- name: Add this host's git key to mirror target
+  authorized_key:
+    user: "{{ git_repo_user }}"
+    key: "{{ git_public_key['content'] | b64decode }}"
+    state: present
+  delegate_to: "{{ git_mirror_host }}"
+  when:
+    - git_mirror_target | length > 0
+    - git_mirror_host is defined
+
+# -- Pre-populate known_hosts for the mirror target --
+# The post-receive hook runs non-interactively as the git user.
+# Without the mirror target's host key in known_hosts, SSH fails
+# with "Host key verification failed" because it can't prompt.
+- name: Scan mirror target host key
+  command: "ssh-keyscan -H {{ git_mirror_target.split('@')[1].split(':')[0] }}"
+  register: git_mirror_hostkey
+  changed_when: false
+  when:
+    - git_mirror_target | length > 0
+    - git_mirror_host is defined
+
+- name: Add mirror target to git user's known_hosts
+  copy:
+    dest: "{{ git_repo_root }}/.ssh/known_hosts"
+    content: "{{ git_mirror_hostkey.stdout }}"
+    owner: "{{ git_repo_user }}"
+    group: "{{ git_repo_user }}"
+    mode: '0600'
+  when:
+    - git_mirror_target | length > 0
+    - git_mirror_host is defined
 
 # -- Create bare repos --
 - name: Create bare repo directories

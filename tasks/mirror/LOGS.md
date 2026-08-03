@@ -56,3 +56,8 @@ New approach: instead of using `ForceCommand internal-sftp` with a `nologin` she
 - Added `/usr/libexec/openssh/sftp-server` to `/etc/shells` so it's accepted as a valid shell
 
 When SSH connects as the restic user, sshd starts the user's shell, which is the SFTP server binary. The SFTP protocol starts immediately. No nologin message, no domain transition, no SELinux denials.
+## 2026-08-03: git mirror fix -- git user had no SSH key for mirror pushes
+
+The post-receive hook on each host runs `git push git@10.66.0.X:/home/git/repos/<repo>.git` to mirror to the other host. But the git user had no SSH keypair -- it only had authorized_keys (for incoming pushes from clients). When the hook tried to SSH to the mirror target as the git user, authentication failed silently (stderr redirected to /dev/null, `|| true` swallowed the error).
+
+Fix: added SSH keypair generation for the git user (`openssh_keypair` module) and a `delegate_to` task that adds this host's git public key to the mirror target's git user authorized_keys. Now rammstein's git user can SSH to sophon's git user, and vice versa.
