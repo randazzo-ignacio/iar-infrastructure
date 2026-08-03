@@ -7,31 +7,37 @@
                          │              INTERNET                           │
                          │                                                 │
     ┌────────────────────┤                    │                            │
-    │  randazzo.ar       │  0b.ar             │  i.ar                     │
-    │  randazzo.com.ar   │                    │  grafana.i.ar             │
-    │  (→redirect)       │                    │  camaras.randazzo.ar       │
+    │  randazzo.ar       │                    │  i.ar                     │
+    │  randazzo.com.ar   │                    │  camaras.randazzo.ar       │
+    │  (→redirect)       │                    │                            │
     │                    │                    │                            │
     ▼                    ▼                    ▼                            │
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐                     │
-│  rammstein   │  │   greenday   │  │   daftpunk   │                     │
-│  VPS 2c/4GB  │  │  VPS 16c/16G │  │  16c/64GB    │                     │
-│  Proxy Hub   │  │  AI Play     │  │ Ollama CPU  │                     │
-│  Caddy + TLS │  │  Podman      │  │ Static page │                     │
-│  WG:10.66.0.1│  │  WG:10.66.0.2│  │ Grafana      │                     │
-└──────┬───────┘  └──────┬───────┘  └──────┬───────┘                     │
-       │   WireGuard      │   WireGuard      │   WireGuard                 │
-       │   (hub)          │   (spoke→hub)    │   (spoke→hub)              │
+┌──────────────────────────────────────────────────────────────────────┐  │
+│  rammstein (sole VPS)                                                │  │
+│  VPS 2c/4GB -- Fedora 44                                            │  │
+│  Caddy + TLS (all domains)                                           │  │
+│  Static pages: randazzo.ar + i.ar                                    │  │
+│  Git bare repos (7 repos, mirrors to sophon)                         │  │
+│  Restic remote target (SFTP, restic user)                            │  │
+│  WireGuard hub: 10.66.0.1                                            │  │
+└──────┬───────────────────────────────────────────────────────────────┘  │
+       │   WireGuard (hub)                                                │
        ═══════════════════════════════════════════════════════════════════ │
-       │                  │                  │                              │
+       │                                                                  │
        ▼                                              ▼                     │
-┌──────────────┐                              ┌──────────────┐             │
-│    yoga      │                              │   sophon     │             │
-│  Intel Ultra │                              │ 12c/96GB    │             │
-│  Silverblue  │                              │ RTX 3080    │             │
-│  WG:10.66.0.4│                              │ Ollama GPU  │             │
-└──────────────┘                              │ Frigate NVR │             │
-                                               │ WG:10.66.0.5│             │
-                                               └──────────────┘             │
+┌──────────────┐                              ┌──────────────────┐       │
+│    yoga      │                              │   sophon         │       │
+│  Intel Ultra │                              │ 12c/96GB        │       │
+│  Silverblue  │                              │ RTX 3080        │       │
+│  WG:10.66.0.4│                              │ Ollama GPU      │       │
+│  pass client │                              │ Frigate NVR     │       │
+│  restic      │                              │ Git bare repos  │       │
+│  backup      │                              │ (mirror of      │       │
+│              │                              │  rammstein)     │       │
+│              │                              │ Restic local    │       │
+│              │                              │  target         │       │
+│              │                              │ WG:10.66.0.5    │       │
+└──────────────┘                              └──────────────────┘       │
                                                                             │
                          └─────────────────────────────────────────────────┘
 ```
@@ -40,56 +46,48 @@
 
 | Host | WG IP | Domain | Role | Hardware |
 |------|-------|--------|------|----------|
-| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar, camaras.randazzo.ar | Proxy hub, Caddy, WG hub | VPS 2c/4GB |
-| greenday | 10.66.0.2 | 0b.ar | AI playground, Podman | VPS 16c/16GB |
-| daftpunk | 10.66.0.3 | i.ar, grafana.i.ar | Ollama CPU, static page, Grafana | 16c/64GB |
-| yoga | 10.66.0.4 | (none) | Laptop (Silverblue) | Intel Core Ultra |
-| sophon | 10.66.0.5 | (none) | Ollama GPU, Frigate NVR, i.ar agents | 12c/96GB, RTX 3080 |
+| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, camaras.randazzo.ar (proxy) | Caddy, WG hub, git bare repos, restic remote target | VPS 2c/4GB, Fedora 44 |
+| yoga | 10.66.0.4 | (none) | Laptop (Silverblue), pass client, restic backup client | Intel Core Ultra |
+| sophon | 10.66.0.5 | (none) | Ollama GPU, Frigate NVR, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
 
 ## Inventory Groups
 
 | Group | Hosts | Purpose |
 |-------|-------|---------|
-| cloud | rammstein, greenday, daftpunk | All VPS hosts |
+| cloud | rammstein | All VPS hosts (single VPS) |
 | local | sophon, yoga | All local machines |
 | proxy | rammstein | Caddy reverse proxy |
-| ai_playground | greenday | AI agent environment |
-| ollama_hosts | daftpunk, sophon | Ollama instances |
+| git_servers | rammstein, sophon | Git bare repo hosts |
+| ollama_hosts | sophon | Ollama instances |
 | frigate_hosts | sophon | Frigate NVR |
 | wg_hub | rammstein | WireGuard hub (single host) |
-| wg_peers | rammstein, greenday, daftpunk, sophon, yoga | All WG mesh participants |
+| wg_peers | rammstein, sophon, yoga | All WG mesh participants |
 | gpu_hosts | sophon | NVIDIA GPU hosts |
-| web_servers | rammstein, daftpunk | Static site hosts |
-| monitoring | daftpunk | Prometheus + Grafana stack |
+| web_servers | rammstein | Static site hosts |
 
 ## Server Roles
 
-### rammstein -- Proxy Hub
-- Caddy reverse proxy with automatic TLS for randazzo.ar, randazzo.com.ar (redirect), camaras.randazzo.ar (Frigate proxy)
+### rammstein -- Sole VPS (Proxy Hub + Data Host)
+- Caddy reverse proxy with automatic TLS for all domains
+- Static pages: randazzo.ar (portfolio), i.ar (landing page)
+- Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)
 - WireGuard hub -- all inter-server traffic routes through here
+- Git bare repos (7 repos: finance, inventory, notes, concepts, references, kicad-projects, password-store) with auto-mirror to sophon
+- Restic remote target (restic user, SFTP access, /srv/restic)
 - Public ports: 80 (HTTP), 443 (HTTPS), 51820/udp (WireGuard)
 
-### greenday -- AI Playground
-- Podman + AI agent user with SSH access
-- Caddy reverse proxy for 0b.ar
-- WireGuard spoke
-
-### daftpunk -- Ollama + Monitoring
-- Ollama (CPU-only, 64GB RAM for large models)
-- Static landing page (i.ar)
-- Grafana + Prometheus monitoring stack
-- Caddy reverse proxy for i.ar, grafana.i.ar
-- WireGuard spoke
-
 ### yoga -- Laptop
-- Fedora Silverblue (rpm-ostree, not dnf)
+- Fedora Silverblue (rpm-ostree, not dnf -- manage_packages: false)
 - WireGuard spoke
-- Package management skipped (manage_packages: false)
+- pass client (password manager, GPG-encrypted, backed up to git)
+- Restic backup client (backs up to sophon primary + rammstein remote)
 
-### sophon -- Local GPU Server
+### sophon -- Local GPU Server + Data Mirror
 - Ollama with GPU offloading (RTX 3080)
 - Frigate NVR with NVIDIA TensorRT (8 cameras)
 - i.ar agent infrastructure (librarian agent)
+- Git bare repo mirror (7 repos, auto-mirror from rammstein)
+- Restic local target (/srv/restic, fast local backup for yoga)
 - WireGuard spoke
 
 ## Security Model
@@ -99,12 +97,12 @@
 3. **No exposed Ollama:** Ollama binds to WireGuard IP only. Access requires VPN.
 4. **Key-only SSH:** Password authentication disabled. Per-host admin usernames prevent terminal confusion.
 5. **Firewalld:** Every host runs firewalld -- default deny incoming, allow SSH + WireGuard only.
-6. **AI agent isolation:** On greenday, the `ai-agent` user has Podman access but limited sudo. Resource limits prevent runaway.
-7. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
+6. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
+7. **Shared SSH keys:** The ansible user's authorized_keys are copied to git and restic users. No separate keys -- if the ansible key is compromised, everything else is too. Separate keys add complexity without adding security.
 
 ## Known Limitations
 
 1. **Ollama has no authentication:** Relies on network isolation (WireGuard IP only).
-2. **AI agent has Podman access:** Podman is root-equivalent in practice. Resource limits are advisory.
-3. **Single hub (rammstein):** If the hub goes down, the WireGuard mesh breaks.
-4. **No backup of runtime data:** IaC covers configuration, not data. Backup role is planned.
+2. **Single hub (rammstein):** If the hub goes down, the WireGuard mesh breaks. Spokes can still reach each other if they have direct routes, but the hub-and-spoke topology means they only see the hub as a peer.
+3. **Silverblue package lag:** yoga can't install new packages via Ansible without a reboot (rpm-ostree atomic updates). pass role requires reboot to take effect.
+4. **Restic SSH authorization:** The restic role copies ansible user's authorized_keys to the restic user on rammstein. If the ansible user's keys change, the restic role must be re-run.

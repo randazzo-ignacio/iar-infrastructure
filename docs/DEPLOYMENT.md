@@ -4,7 +4,7 @@
 
 ### 1.1 Install Ansible
 ```bash
-# Fedora / AlmaLinux
+# Fedora
 sudo dnf install ansible
 ```
 
@@ -32,9 +32,9 @@ vim inventory/group_vars/all/vault.yml
 ```
 Replace all placeholder values:
 - `wg_private_keys` / `wg_public_keys` (from `wg-keys/vault-snippet.yml`)
-- `grafana_admin_password`
+- `pass_gpg_id.yoga` (generate: `gpg --full-generate-key`, then `gpg --list-secret-keys --keyid-format long`)
+- `restic_password` (strong passphrase for backup encryption)
 - `frigate_camera_rtsp_user` / `frigate_camera_rtsp_password`
-- `ai_agent_ssh_public_key` (generate: `ssh-keygen -t ed25519 -f ~/.ssh/ai_agent_key`)
 - `iar_telegram_bot_token` / `iar_telegram_chat_id`
 
 ### 1.6 Encrypt the Vault
@@ -42,18 +42,22 @@ Replace all placeholder values:
 ansible-vault encrypt inventory/group_vars/all/vault.yml --ask-vault-pass
 ```
 
-### 1.7 Configure Host Variables
-Set per-host settings in `inventory/host_vars/<host>.yml`:
-- `ansible_user` (per-host admin username)
-- `wg_ip` (WireGuard IP)
-- Service enable flags and configuration
-
-### 1.8 Configure SSH Config
+### 1.7 Configure SSH Config
 Add host entries to `~/.ssh/config` for Ansible to resolve hosts:
 ```
 Host rammstein
   Hostname randazzo.ar
   User riemann
+  IdentityFile ~/.ssh/id_ed25519
+
+Host sophon
+  Hostname 10.66.0.5
+  User nacho
+  IdentityFile ~/.ssh/id_ed25519
+
+Host yoga
+  Hostname 10.66.0.4
+  User nacho
   IdentityFile ~/.ssh/id_ed25519
 ```
 
@@ -80,16 +84,16 @@ ansible-playbook playbooks/site.yml --ask-vault-pass
 This runs in order:
 1. **base** -- hardening, updates, firewalld, sysctl, SSH
 2. **wireguard** -- mesh network (hub first, then spokes)
-3. **caddy** -- reverse proxy with TLS
-4. **podman** -- container runtime on all hosts
-5. **nvidia** -- GPU drivers and toolkit (gpu_hosts only)
-6. **ai-environment** -- AI agent user, workspace, limits
-7. **ollama** -- model serving (ollama_hosts)
-8. **frigate** -- NVR with TensorRT (frigate_hosts)
-9. **static-site** -- portfolio and landing pages (web_servers)
-10. **monitoring** -- Prometheus + Grafana (monitoring group)
-11. **node-exporter** -- host metrics on all hosts
-12. **iar-agent** -- i.ar agent timers (hosts with iar_agents_enabled)
+3. **caddy** -- reverse proxy with TLS (rammstein only)
+4. **git-repo** -- bare repos on rammstein + sophon with auto-mirroring
+5. **pass** -- password manager on yoga (GPG + git backup)
+6. **restic** -- backup client on yoga + sophon, remote target on rammstein
+7. **podman** -- container runtime on all hosts
+8. **nvidia** -- GPU drivers and toolkit (sophon only)
+9. **ollama** -- model serving (sophon only)
+10. **frigate** -- NVR with TensorRT (sophon only)
+11. **static-site** -- portfolio and landing pages (rammstein only)
+12. **iar-agent** -- i.ar agent timers (sophon only)
 
 ### 3.2 Verify WireGuard
 ```bash
@@ -100,47 +104,61 @@ ssh rammstein 'wg show wg0'
 ```bash
 curl -I https://randazzo.ar
 curl -I https://i.ar
-curl -I https://0b.ar
-curl -I https://grafana.i.ar
 curl -I https://camaras.randazzo.ar
 ```
 
-### 3.4 Verify Ollama
+### 3.4 Verify Git Repos
 ```bash
-ssh rammstein 'curl http://10.66.0.3:11434/api/tags'  # daftpunk
-ssh rammstein 'curl http://10.66.0.5:11434/api/tags'  # sophon
+# On yoga, test clone:
+git clone git@10.66.0.1:/srv/git/notes.git
+cd notes && echo "test" > README.md && git add . && git commit -m "test" && git push
+# Verify mirror on sophon:
+ssh sophon 'ls /srv/git/notes.git/objects'
+```
+
+### 3.5 Verify Restic
+```bash
+# Manual backup test on yoga:
+sudo restic --repo sftp:restic@10.66.0.5:/srv/restic backup /home/nacho/Documents
+sudo restic --repo sftp:restic@10.66.0.1:/srv/restic backup /home/nacho/Documents
+# Check snapshots:
+sudo restic --repo sftp:restic@10.66.0.5:/srv/restic snapshots
 ```
 
 ---
 
-## Phase 4: Local Machines
+## Phase 4: Post-Deployment
 
-```bash
-# Base + WireGuard for all local machines:
-ansible-playbook playbooks/base.yml --ask-vault-pass --limit local
-ansible-playbook playbooks/wireguard.yml --ask-vault-pass --limit local
-
-# GPU + Ollama + Frigate for sophon:
-ansible-playbook playbooks/nvidia.yml --ask-vault-pass --limit sophon
-ansible-playbook playbooks/ollama.yml --ask-vault-pass --limit sophon
-```
-
----
-
-## Phase 5: Post-Deployment
-
-### 5.1 Cleanup
+### 4.1 Cleanup
 ```bash
 rm -rf wg-keys/
 ```
 
-### 5.2 Save Backup
+### 4.2 Save Backup
 Store in a secure location:
 - Vault password
 - SSH private key (`~/.ssh/id_ed25519`)
-- AI agent SSH key (`~/.ssh/ai_agent_key`)
-- Git remote URL
+- Restic password (also store in pass + on paper for DRP)
+- GPG key (pass encryption key)
 
-### 5.3 Document Any Manual Changes
+### 4.3 Document Any Manual Changes
 If you make manual changes to any server, update the Ansible playbooks to match.
 The goal is: **if the playbooks are run on fresh servers, the result is identical.**
+
+---
+
+## Standalone Playbooks
+
+Individual roles can be run independently:
+
+| Playbook | Purpose | Hosts |
+|----------|---------|-------|
+| `playbooks/site.yml` | Full deployment | All |
+| `playbooks/base.yml` | Base hardening only | All |
+| `playbooks/wireguard.yml` | WG mesh only | All |
+| `playbooks/caddy.yml` | Caddy only | web_servers |
+| `playbooks/git-repos.yml` | Git bare repos only | rammstein, sophon |
+| `playbooks/pass.yml` | pass password manager | yoga |
+| `playbooks/restic.yml` | Restic backup setup | rammstein, sophon, yoga |
+| `playbooks/portfolio-page.yml` | Deploy portfolio page | web_servers |
+| `playbooks/static-page.yml` | Deploy i.ar landing page | web_servers |
