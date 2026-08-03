@@ -23,6 +23,13 @@ wg_public_keys:
   sophon: "PUBLIC_KEY_HERE"
   yoga: "PUBLIC_KEY_HERE"
 
+# ── Git bare repo SSH authorized keys ──────────────────────
+# Public SSH keys for clients that can push/pull to git@rammstein / git@sophon
+# Generate on each client: ssh-keygen -t ed25519 -f ~/.ssh/git_key
+git_authorized_keys:
+  - "ssh-ed25519 AAAA... nacho@yoga"
+  - "ssh-ed25519 AAAA... nacho@sophon"
+
 # ── Frigate RTSP camera credentials ────────────────────────
 # Shared across all cameras (user/password in RTSP URLs)
 frigate_camera_rtsp_user: "CAMERA_USER_HERE"

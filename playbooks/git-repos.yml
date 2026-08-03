@@ -1,0 +1,20 @@
+---
+# playbooks/git-repos.yml -- Create bare git repos on rammstein + sophon.
+# Usage: ansible-playbook playbooks/git-repos.yml --ask-vault-pass
+#
+# rammstein is primary, sophon is mirror. Both have identical repo lists.
+# Post-receive hooks auto-mirror to each other over WireGuard.
+
+- name: Git bare repos on rammstein (primary)
+  hosts: rammstein
+  become: true
+  roles:
+    - role: git-repo
+      tags: [git-repo]
+
+- name: Git bare repos on sophon (mirror)
+  hosts: sophon
+  become: true
+  roles:
+    - role: git-repo
+      tags: [git-repo]

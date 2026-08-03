@@ -5,7 +5,7 @@
 # ────────────────────────────────────────────────────────────
 set -euo pipefail
 
-HOSTS=("daftpunk" "rammstein" "greenday" "yoga" "sophon")
+HOSTS=("rammstein" "yoga" "sophon")
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KEYS_DIR="${SCRIPT_DIR}/../wg-keys"
 

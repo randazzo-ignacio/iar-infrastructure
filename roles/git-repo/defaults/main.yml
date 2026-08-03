@@ -1,0 +1,31 @@
+---
+# roles/git-repo/defaults/main.yml
+
+# Where to create bare repos on the target host
+git_repo_root: "/srv/git"
+
+# User that owns the bare repos (and that clients SSH as to push/pull)
+git_repo_user: "git"
+
+# List of repo names to create (without .git suffix)
+# Set in host_vars. Example:
+#   git_bare_repos:
+#     - finance
+#     - notes
+#     - inventory
+git_bare_repos: []
+
+# SSH public keys authorized to access the git user (client keys)
+# Set in host_vars or vault. Example:
+#   git_authorized_keys:
+#     - "ssh-ed25519 AAAA... nacho@yoga"
+#     - "ssh-ed25519 AAAA... nacho@sophon"
+git_authorized_keys: []
+
+# Mirror configuration -- set on BOTH hosts if mirroring is desired.
+# Each host pushes to the other via post-receive hook.
+# Format: user@host:path  (use WG IP, not DNS)
+# On rammstein: git_mirror_target: "git@10.66.0.5:/srv/git"
+# On sophon:    git_mirror_target: "git@10.66.0.1:/srv/git"
+# Leave empty to disable mirroring.
+git_mirror_target: ""

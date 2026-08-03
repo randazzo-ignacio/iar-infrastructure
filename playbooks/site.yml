@@ -36,6 +36,13 @@
     - role: caddy
       tags: [caddy]
 
+- name: Git bare repos (rammstein + sophon)
+  hosts: rammstein, sophon
+  become: true
+  roles:
+    - role: git-repo
+      tags: [git-repo]
+
 - name: Podman (all hosts)
   hosts: all
   become: true
