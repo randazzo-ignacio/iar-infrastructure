@@ -6,7 +6,8 @@
 # Phone and laptop connect via https://caldav.randazzo.ar
 
 # -- Installation --
-radicale_package: "radicale"
+# Fedora packages Radicale 3 as 'radicale3' (not 'radicale')
+radicale_package: "radicale3"
 
 # -- Network --
 # Bind to localhost only -- Caddy is the public entry point.

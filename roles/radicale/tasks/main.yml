@@ -3,28 +3,20 @@
 # Installs and configures Radicale (CalDAV server) on rammstein.
 #
 # Architecture:
-#   Phone/Laptop -> https://caldav.randzzo.ar (Caddy, TLS + basic auth)
+#   Phone/Laptop -> https://caldav.randazzo.ar (Caddy, TLS + basic auth)
 #                   -> localhost:5232 (Radicale)
 #
 # Radicale binds to localhost only. Caddy is the public entry point.
 # Calendar data is backed up to the notes git bare repo via cron.
 #
-# Authentication: htpasswd-style basic auth (single user).
-# Password is stored in the Ansible vault as radicale_password.
+# Fedora packages Radicale 3 as 'radicale3'. The binary is /usr/bin/radicale3.
+# The package creates a 'radicale' system user and group.
 
 # -- Install Radicale --
 - name: Install Radicale
   dnf:
     name: "{{ radicale_package }}"
     state: present
-
-# -- Create radicale user (system user) --
-- name: Create radicale system user
-  user:
-    name: radicale
-    system: true
-    create_home: false
-    home: "{{ radicale_data_dir }}"
 
 # -- Ensure directories exist --
 - name: Ensure config directory exists
@@ -64,6 +56,9 @@
   notify: restart radicale
 
 # -- Deploy systemd service --
+# The Fedora package may ship its own service file. We deploy a custom one
+# with hardening and our config path. The service name is 'radicale' (not
+# 'radicale3') to match the system user.
 - name: Deploy Radicale systemd service
   template:
     src: radicale.service.j2

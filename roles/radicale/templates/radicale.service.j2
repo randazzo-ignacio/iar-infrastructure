@@ -1,6 +1,7 @@
 # {{ ansible_managed }}
 # Radicale systemd service
-# Runs as the radicale system user, binds to WireGuard IP only.
+# Runs as the radicale system user, binds to localhost only.
+# Caddy provides TLS and public access via caldav.randazzo.ar.
 
 [Unit]
 Description=Radicale CalDAV/CardDAV Server
@@ -11,7 +12,7 @@ Wants=network-online.target
 Type=simple
 User=radicale
 Group=radicale
-ExecStart=/usr/bin/radicale --config {{ radicale_config_dir }}/config
+ExecStart=/usr/bin/radicale3 --config {{ radicale_config_dir }}/config
 Restart=on-failure
 RestartSec=5
 
