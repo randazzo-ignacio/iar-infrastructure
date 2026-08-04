@@ -102,9 +102,9 @@
     - { name: "user.email", value: "wiki@rammstein" }
   changed_when: false
 
-# -- Initial clone of wiki repo --
+# -- Initial clone of wiki repo (via SSH, avoids dubious ownership) --
 - name: Clone wiki repo (initial)
-  command: "git clone {{ wiki_bare_repo }} {{ wiki_source_dir }}"
+  command: "git clone {{ wiki_bare_repo_ssh }} {{ wiki_source_dir }}"
   args:
     creates: "{{ wiki_source_dir }}/.git"
   become_user: wiki
@@ -129,11 +129,11 @@
     group: root
     mode: '0755'
 
-# -- Deploy post-receive hook --
+# -- Deploy post-receive hook (local path, runs on same host) --
 - name: Deploy wiki post-receive hook
   template:
     src: post-receive.j2
-    dest: "{{ wiki_bare_repo }}/hooks/post-receive"
+    dest: "{{ wiki_bare_repo_local }}/hooks/post-receive"
     owner: git
     group: git
     mode: '0755'
