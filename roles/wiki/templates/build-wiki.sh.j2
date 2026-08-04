@@ -1,0 +1,29 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Wiki build script -- runs as the wiki user.
+# Pulls latest source, runs rake build, outputs to wiki_build_dir.
+#
+# Called by the post-receive hook on wiki.git (via sudo).
+
+set -e
+
+SOURCE_DIR="{{ wiki_source_dir }}"
+BUILD_DIR="{{ wiki_build_dir }}"
+
+echo "[build-wiki] Pulling latest source..."
+cd "$SOURCE_DIR"
+git pull --quiet origin main 2>/dev/null || git pull --quiet origin master 2>/dev/null || true
+
+echo "[build-wiki] Building..."
+cd "$SOURCE_DIR"
+rake clean build 2>&1
+
+# Copy build output to served directory
+echo "[build-wiki] Deploying to {{ wiki_build_dir }}..."
+rm -rf "{{ wiki_build_dir }}"/*
+cp -r "$SOURCE_DIR/build/"* "{{ wiki_build_dir }}/"
+
+# Copy static assets (CSS, etc.)
+cp -r "$SOURCE_DIR/_wiki/"* "{{ wiki_build_dir }}/_wiki/" 2>/dev/null || true
+
+echo "[build-wiki] Done."

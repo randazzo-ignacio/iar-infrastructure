@@ -87,6 +87,13 @@
     - role: radicale
       tags: [radicale]
 
+- name: Wiki static site (rammstein only)
+  hosts: rammstein
+  become: true
+  roles:
+    - role: wiki
+      tags: [wiki]
+
 - name: Podman (all hosts)
   hosts: all
   become: true

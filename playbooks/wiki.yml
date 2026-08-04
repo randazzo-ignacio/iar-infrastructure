@@ -1,0 +1,14 @@
+---
+# playbooks/wiki.yml -- Deploy wiki static site on rammstein.
+# Usage: ansible-playbook playbooks/wiki.yml --ask-vault-pass
+#
+# Installs build tools (ruby, kramdown, pandoc, pagefind), creates a wiki
+# user, sets up a post-receive hook on wiki.git that auto-builds on push,
+# and adds a Caddy route for wiki.randazzo.ar.
+
+- name: Deploy wiki on rammstein
+  hosts: rammstein
+  become: true
+  roles:
+    - role: wiki
+      tags: [wiki]

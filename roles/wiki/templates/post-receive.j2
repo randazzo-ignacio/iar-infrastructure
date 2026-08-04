@@ -1,0 +1,13 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Post-receive hook for wiki.git
+# Triggers a rebuild of the wiki static site when new content is pushed.
+#
+# Runs as the git user. Calls build-wiki script which runs as the wiki user
+# via sudo (specific command only, no password).
+
+set -e
+
+echo "Wiki push received. Triggering rebuild..."
+sudo -u wiki /usr/local/bin/build-wiki
+echo "Wiki rebuild complete."

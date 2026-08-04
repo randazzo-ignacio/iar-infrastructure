@@ -1,0 +1,30 @@
+---
+# roles/wiki/defaults/main.yml
+
+# Wiki static site served by Caddy on rammstein.
+# Source lives in the wiki bare repo. A post-receive hook
+# checks out the source, runs rake build, and Caddy serves
+# the output.
+
+# -- Domain --
+wiki_domain: "wiki.randazzo.ar"
+
+# -- Paths --
+# Source checkout (bare repo working tree)
+wiki_source_dir: "/var/lib/wiki/source"
+# Build output (served by Caddy)
+wiki_build_dir: "/var/lib/wiki/build"
+# Bare repo path (created by git-repo role)
+wiki_bare_repo: "/home/git/repos/wiki.git"
+
+# -- Build dependencies --
+wiki_packages:
+  - ruby
+  - rubygem-kramdown
+  - pandoc
+  - poppler-utils  # for pdftotext (PDF text index)
+
+# Pagefind is not in Fedora repos -- downloaded as binary
+pagefind_version: "1.1.0"
+pagefind_url: "https://github.com/CloudCannon/pagefind/releases/download/v{{ pagefind_version }}/pagefind-v{{ pagefind_version }}-x86_64-unknown-linux-musl.tar.gz"
+pagefind_binary: "/usr/local/bin/pagefind"

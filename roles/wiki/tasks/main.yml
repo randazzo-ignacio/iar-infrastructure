@@ -1,0 +1,159 @@
+---
+# roles/wiki/tasks/main.yml
+# Deploys the wiki static site on rammstein.
+#
+# Architecture:
+#   ~/repos/wiki/ (yoga) -> push to wiki.git (rammstein)
+#   -> post-receive hook checks out source to /var/lib/wiki/source
+#   -> runs `rake build` -> output to /var/lib/wiki/build
+#   -> Caddy serves /var/lib/wiki/build at wiki.randzzo.ar
+#
+# Pagefind is downloaded as a binary (not in Fedora repos).
+
+# -- Install build dependencies --
+- name: Install wiki build packages
+  dnf:
+    name: "{{ wiki_packages }}"
+    state: present
+
+# -- Install Pagefind binary --
+- name: Check if pagefind is installed
+  stat:
+    path: "{{ pagefind_binary }}"
+  register: pagefind_check
+
+- name: Download and install Pagefind
+  unarchive:
+    src: "{{ pagefind_url }}"
+    dest: /usr/local/bin/
+    remote_src: true
+    mode: '0755'
+    owner: root
+    group: root
+  when: not pagefind_check.stat.exists
+
+# -- Create wiki user --
+- name: Create wiki system user
+  user:
+    name: wiki
+    system: true
+    create_home: false
+    home: "/var/lib/wiki"
+
+# -- Create directories --
+- name: Create wiki directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: wiki
+    group: wiki
+    mode: '0755'
+  loop:
+    - "/var/lib/wiki"
+    - "{{ wiki_source_dir }}"
+    - "{{ wiki_build_dir }}"
+
+# -- SSH setup for wiki user (to pull from bare repo) --
+- name: Ensure .ssh directory exists for wiki user
+  file:
+    path: "/var/lib/wiki/.ssh"
+    state: directory
+    owner: wiki
+    group: wiki
+    mode: '0700'
+
+- name: Generate SSH key for wiki user
+  openssh_keypair:
+    path: "/var/lib/wiki/.ssh/id_ed25519"
+    type: ed25519
+    owner: wiki
+    group: wiki
+    comment: "wiki-build@rammstein"
+
+- name: Read wiki user's public key
+  slurp:
+    path: "/var/lib/wiki/.ssh/id_ed25519.pub"
+  register: wiki_public_key
+
+- name: Add wiki key to git user's authorized_keys
+  authorized_key:
+    user: git
+    key: "{{ wiki_public_key['content'] | b64decode }}"
+    state: present
+
+- name: Add rammstein host key to wiki's known_hosts
+  shell: "ssh-keyscan -H 10.66.0.1 >> /var/lib/wiki/.ssh/known_hosts"
+  become_user: wiki
+  changed_when: false
+
+- name: Set known_hosts permissions
+  file:
+    path: "/var/lib/wiki/.ssh/known_hosts"
+    owner: wiki
+    group: wiki
+    mode: '0600'
+
+# -- Configure git for wiki user --
+- name: Configure git identity for wiki user
+  command: "git config --global {{ item.name }} {{ item.value }}"
+  become_user: wiki
+  loop:
+    - { name: "user.name", value: "Wiki Build" }
+    - { name: "user.email", value: "wiki@rammstein" }
+  changed_when: false
+
+# -- Initial clone of wiki repo --
+- name: Clone wiki repo (initial)
+  command: "git clone {{ wiki_bare_repo }} {{ wiki_source_dir }}"
+  args:
+    creates: "{{ wiki_source_dir }}/.git"
+  become_user: wiki
+  ignore_errors: true  # repo may be empty on first run
+
+# -- Sudoers: allow git user to run build-wiki as wiki user --
+- name: Allow git user to run build-wiki as wiki user
+  copy:
+    dest: /etc/sudoers.d/wiki-build
+    content: "git ALL=(wiki) NOPASSWD: /usr/local/bin/build-wiki\n"
+    owner: root
+    group: root
+    mode: '0440'
+  validate: 'visudo -cf %s'
+
+# -- Deploy build script --
+- name: Deploy wiki build script
+  template:
+    src: build-wiki.sh.j2
+    dest: "/usr/local/bin/build-wiki"
+    owner: root
+    group: root
+    mode: '0755'
+
+# -- Deploy post-receive hook --
+- name: Deploy wiki post-receive hook
+  template:
+    src: post-receive.j2
+    dest: "{{ wiki_bare_repo }}/hooks/post-receive"
+    owner: git
+    group: git
+    mode: '0755'
+
+# -- Add Caddy route for wiki --
+- name: Add wiki site to Caddy
+  blockinfile:
+    path: "{{ caddy_config_path }}"
+    marker: "# {mark} ANSIBLE MANAGED -- Wiki"
+    block: |
+      {{ wiki_domain }} {
+          root * {{ wiki_build_dir }}
+          file_server
+          encode gzip zstd
+          header {
+              Strict-Transport-Security "max-age=31536000; includeSubDomains"
+              X-Content-Type-Options nosniff
+              Referrer-Policy no-referrer
+          }
+      }
+  vars:
+    caddy_config_path: "/etc/caddy/Caddyfile"
+  notify: reload caddy
