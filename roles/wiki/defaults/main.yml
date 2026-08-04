@@ -22,6 +22,7 @@ wiki_bare_repo_local: "/home/git/repos/wiki.git"
 # -- Build dependencies --
 wiki_packages:
   - ruby
+  - rubygem-rake
   - rubygem-kramdown
   - pandoc
   - poppler-utils  # for pdftotext (PDF text index)

@@ -4,8 +4,11 @@
 # Pulls latest source, runs rake build, outputs to wiki_build_dir.
 #
 # Called by the post-receive hook on wiki.git (via sudo).
+# Uses explicit PATH because sudo strips environment variables.
 
 set -e
+
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
 
 SOURCE_DIR="{{ wiki_source_dir }}"
 BUILD_DIR="{{ wiki_build_dir }}"
