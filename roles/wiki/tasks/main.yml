@@ -6,7 +6,7 @@
 #   ~/repos/wiki/ (yoga) -> push to wiki.git (rammstein)
 #   -> post-receive hook checks out source to /var/lib/wiki/source
 #   -> runs `rake build` -> output to /var/lib/wiki/build
-#   -> Caddy serves /var/lib/wiki/build at wiki.randzzo.ar
+#   -> Caddy serves /var/lib/wiki/build at wiki.randazzo.ar
 #
 # Pagefind is downloaded as a binary (not in Fedora repos).
 
@@ -112,13 +112,13 @@
 
 # -- Sudoers: allow git user to run build-wiki as wiki user --
 - name: Allow git user to run build-wiki as wiki user
-  copy:
+  template:
+    src: sudoers.j2
     dest: /etc/sudoers.d/wiki-build
-    content: "git ALL=(wiki) NOPASSWD: /usr/local/bin/build-wiki\n"
     owner: root
     group: root
     mode: '0440'
-  validate: 'visudo -cf %s'
+    validate: 'visudo -cf %s'
 
 # -- Deploy build script --
 - name: Deploy wiki build script
