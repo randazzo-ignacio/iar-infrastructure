@@ -31,9 +31,8 @@ radicale_config_dir: "/etc/radicale"
 radicale_username: "nacho"
 
 # -- Git backup --
-# Calendar data is backed up to the notes bare repo via cron.
-# A cron job copies the data dir to a git working copy and commits.
+# Calendar data is backed up to the notes bare repo via systemd timer.
+# A systemd timer runs daily at 3:00 AM, copies calendar data to a
+# git working copy, commits, and pushes.
 radicale_git_backup_repo: "/var/lib/radicale/backup"
 radicale_git_remote: "git@10.66.0.1:/home/git/repos/notes.git"
-radicale_backup_cron_hour: "3"
-radicale_backup_cron_minute: "0"

@@ -7,7 +7,7 @@
 #                   -> localhost:5232 (Radicale)
 #
 # Radicale binds to localhost only. Caddy is the public entry point.
-# Calendar data is backed up to the notes git bare repo via cron.
+# Calendar data is backed up to the notes git bare repo via systemd timer.
 #
 # Fedora packages Radicale 3 as 'radicale3'. The binary is /usr/bin/radicale3.
 # The package creates a 'radicale' system user and group.
@@ -38,8 +38,6 @@
     mode: '0750'
 
 # -- Generate htpasswd file for authentication --
-# Uses htpasswd from httpd-tools (no Python passlib dependency).
-# bcrypt (-B) is the most secure hash Radicale supports.
 - name: Generate htpasswd file
   command: "htpasswd -bcB {{ radicale_config_dir }}/users {{ radicale_username }} {{ radicale_password }}"
   no_log: true
@@ -99,8 +97,6 @@
   notify: reload caddy
 
 # -- SSH setup for radicale user (to push to git bare repo) --
-# The radicale user needs SSH access to the git user on localhost
-# to clone and push the notes repo for calendar backup.
 - name: Ensure .ssh directory exists for radicale user
   file:
     path: "/var/lib/radicale/.ssh"
@@ -140,7 +136,7 @@
     group: radicale
     mode: '0600'
 
-# -- Git backup cron job --
+# -- Git backup via systemd timer --
 - name: Ensure backup working copy directory exists
   file:
     path: "{{ radicale_git_backup_repo }}"
@@ -172,11 +168,27 @@
     - { name: "user.email", value: "radicale@rammstein" }
   changed_when: false
 
-- name: Add cron job for calendar backup
-  cron:
-    name: "Backup Radicale calendar data to git"
-    user: radicale
-    hour: "{{ radicale_backup_cron_hour }}"
-    minute: "{{ radicale_backup_cron_minute }}"
-    job: "{{ radicale_config_dir }}/backup-calendar.sh"
-    state: present
+- name: Deploy calendar backup systemd service
+  template:
+    src: radicale-backup.service.j2
+    dest: /etc/systemd/system/radicale-backup.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd for radicale-backup
+
+- name: Deploy calendar backup systemd timer
+  template:
+    src: radicale-backup.timer.j2
+    dest: /etc/systemd/system/radicale-backup.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd for radicale-backup
+
+- name: Enable and start calendar backup timer
+  service:
+    name: radicale-backup.timer
+    state: started
+    enabled: true
+    daemon_reload: true

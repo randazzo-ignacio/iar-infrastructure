@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Calendar backup service -- runs the backup script as the radicale user.
+
+[Unit]
+Description=Radicale calendar backup to git
+After=network-online.target radicale.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=radicale
+Group=radicale
+ExecStart={{ radicale_config_dir }}/backup-calendar.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -11,3 +11,7 @@
   service:
     name: caddy
     state: reloaded
+
+- name: reload systemd for radicale-backup
+  systemd:
+    daemon_reload: true
