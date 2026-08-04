@@ -7,19 +7,15 @@
                     10.66.0.1
                     Public: 51820/udp
                          │
-          ┌──────────────┼──────────────┐
-          │              │              │
-   greenday (spoke)  daftpunk (spoke)  sophon (spoke)
-     10.66.0.2       10.66.0.3       10.66.0.5
-          │              │              │
-          └──────────────┴──────────────┘
-                    yoga (spoke)
-                    10.66.0.4
+          ┌──────────────┴──────────────┐
+          │                             │
+   sophon (spoke)                 yoga (spoke)
+     10.66.0.5                     10.66.0.4
 ```
 
 All spoke nodes connect to the hub. The hub routes traffic between peers. This means:
-- greenday can reach daftpunk (traffic goes: greenday -> hub -> daftpunk)
 - sophon can reach yoga (traffic goes: sophon -> hub -> yoga)
+- yoga can reach sophon (traffic goes: yoga -> hub -> sophon)
 - The hub must have IP forwarding enabled (handled by the wireguard role)
 
 ## Key Generation
@@ -44,21 +40,24 @@ Address = 10.66.0.1/16
 ListenPort = 51820
 MTU = 1420
 
-# Peer: greenday
+# Peer: sophon
 [Peer]
-PublicKey = <greenday-public>
-AllowedIPs = 10.66.0.2/32
-Endpoint = 0b.ar:51820
+PublicKey = <sophon-public>
+AllowedIPs = 10.66.0.5/32
 PersistentKeepalive = 25
 
-# ... (all wg_peers listed)
+# Peer: yoga
+[Peer]
+PublicKey = <yoga-public>
+AllowedIPs = 10.66.0.4/32
+PersistentKeepalive = 25
 ```
 
-### Spoke (e.g., greenday):
+### Spoke (e.g., sophon):
 ```ini
 [Interface]
-PrivateKey = <greenday-private>
-Address = 10.66.0.2/16
+PrivateKey = <sophon-private>
+Address = 10.66.0.5/16
 MTU = 1420
 
 # Peer: rammstein (hub)
@@ -81,22 +80,22 @@ WireGuard uses two inventory groups:
 
 ```bash
 # Check status on any host:
-wg show
+ssh <host> 'wg show'
 
 # Restart WireGuard:
-systemctl restart wg-quick@wg0
+ssh <host> 'sudo systemctl restart wg-quick@wg0'
 
 # Re-mesh (update all peers):
 ansible-playbook playbooks/wireguard.yml --ask-vault-pass
 
 # Check handshake status:
-wg show wg0 latest-handshakes
+ssh <host> 'wg show wg0 latest-handshakes'
 
 # Check transfer stats:
-wg show wg0 transfer
+ssh <host> 'wg show wg0 transfer'
 
 # Troubleshoot:
-journalctl -u wg-quick@wg0 -f
+ssh <host> 'journalctl -u wg-quick@wg0 -f'
 ```
 
 ## Adding a New Peer
