@@ -24,6 +24,7 @@ wiki_packages:
   - ruby
   - rubygem-rake
   - rubygem-kramdown
+  - rubygem-kramdown-parser-gfm  # GFM (GitHub Flavored Markdown) parser
   - pandoc
   - poppler-utils  # for pdftotext (PDF text index)
 
