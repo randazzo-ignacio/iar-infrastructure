@@ -12,7 +12,7 @@ Wants=network-online.target
 Type=simple
 User=radicale
 Group=radicale
-ExecStart=/usr/bin/radicale3 --config {{ radicale_config_dir }}/config
+ExecStart=/usr/bin/radicale --config {{ radicale_config_dir }}/config
 Restart=on-failure
 RestartSec=5
 
