@@ -12,10 +12,12 @@
 # Fedora packages Radicale 3 as 'radicale3'. The binary is /usr/bin/radicale3.
 # The package creates a 'radicale' system user and group.
 
-# -- Install Radicale --
-- name: Install Radicale
+# -- Install Radicale + httpd-tools (for htpasswd) --
+- name: Install Radicale and httpd-tools
   dnf:
-    name: "{{ radicale_package }}"
+    name:
+      - "{{ radicale_package }}"
+      - httpd-tools
     state: present
 
 # -- Ensure directories exist --
@@ -36,14 +38,19 @@
     mode: '0750'
 
 # -- Generate htpasswd file for authentication --
+# Uses htpasswd from httpd-tools (no Python passlib dependency).
+# bcrypt (-B) is the most secure hash Radicale supports.
 - name: Generate htpasswd file
-  copy:
-    dest: "{{ radicale_config_dir }}/users"
-    content: "{{ radicale_username }}:{{ radicale_password | password_hash('bcrypt') }}\n"
+  command: "htpasswd -bcB {{ radicale_config_dir }}/users {{ radicale_username }} {{ radicale_password }}"
+  no_log: true
+  changed_when: false
+
+- name: Set htpasswd file permissions
+  file:
+    path: "{{ radicale_config_dir }}/users"
     owner: root
     group: radicale
     mode: '0640'
-  no_log: true
 
 # -- Deploy Radicale config --
 - name: Deploy Radicale config
