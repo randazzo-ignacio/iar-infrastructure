@@ -17,8 +17,6 @@ htpasswd_encryption = bcrypt
 # Filesystem storage -- calendar data as plain files on disk
 type = multifilesystem
 filesystem_folder = {{ radicale_data_dir }}
-# Create folders if they don't exist
-filesystem_create_folder = true
 
 [web]
 # Disable built-in web UI -- we use CalDAV clients only
