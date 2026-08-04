@@ -63,9 +63,6 @@
   notify: restart radicale
 
 # -- Deploy systemd service --
-# The Fedora package may ship its own service file. We deploy a custom one
-# with hardening and our config path. The service name is 'radicale' (not
-# 'radicale3') to match the system user.
 - name: Deploy Radicale systemd service
   template:
     src: radicale.service.j2
@@ -101,8 +98,49 @@
       }
   notify: reload caddy
 
+# -- SSH setup for radicale user (to push to git bare repo) --
+# The radicale user needs SSH access to the git user on localhost
+# to clone and push the notes repo for calendar backup.
+- name: Ensure .ssh directory exists for radicale user
+  file:
+    path: "/var/lib/radicale/.ssh"
+    state: directory
+    owner: radicale
+    group: radicale
+    mode: '0700'
+
+- name: Generate SSH key for radicale user
+  openssh_keypair:
+    path: "/var/lib/radicale/.ssh/id_ed25519"
+    type: ed25519
+    owner: radicale
+    group: radicale
+    comment: "radicale-backup@rammstein"
+
+- name: Read radicale user's public key
+  slurp:
+    path: "/var/lib/radicale/.ssh/id_ed25519.pub"
+  register: radicale_public_key
+
+- name: Add radicale key to git user's authorized_keys
+  authorized_key:
+    user: git
+    key: "{{ radicale_public_key['content'] | b64decode }}"
+    state: present
+
+- name: Add rammstein host key to radicale's known_hosts
+  shell: "ssh-keyscan -H 10.66.0.1 >> /var/lib/radicale/.ssh/known_hosts"
+  become_user: radicale
+  changed_when: false
+
+- name: Set known_hosts permissions
+  file:
+    path: "/var/lib/radicale/.ssh/known_hosts"
+    owner: radicale
+    group: radicale
+    mode: '0600'
+
 # -- Git backup cron job --
-# Clones the notes repo, copies calendar data, commits, pushes.
 - name: Ensure backup working copy directory exists
   file:
     path: "{{ radicale_git_backup_repo }}"
@@ -127,14 +165,12 @@
     mode: '0750'
 
 - name: Configure git identity for radicale user
-  git_config:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
-    scope: global
-    user: radicale
+  command: "git config --global {{ item.name }} {{ item.value }}"
+  become_user: radicale
   loop:
     - { name: "user.name", value: "Radicale Backup" }
     - { name: "user.email", value: "radicale@rammstein" }
+  changed_when: false
 
 - name: Add cron job for calendar backup
   cron:
