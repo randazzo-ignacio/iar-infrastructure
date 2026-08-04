@@ -18,6 +18,7 @@
 8. [Frigate (NVR)](#8-frigate-nvr)
 9. [Common Workflows](#9-common-workflows)
 10. [Troubleshooting](#10-troubleshooting)
+11. [Radicale (Calendar)](#11-radicale-calendar)
 
 ---
 
@@ -811,6 +812,185 @@ echo "test" | gpg --encrypt --recipient <key-id> | gpg --decrypt
 
 ---
 
+
+## 11. Radicale (Calendar)
+
+### What it is
+
+Radicale is a lightweight CalDAV server running on rammstein. It provides
+calendar sync to phone and laptop without depending on a provider. Caddy
+handles TLS and reverse proxies to Radicale on localhost:5232.
+
+### Architecture
+
+```
+Phone/Laptop -> https://caldav.randazzo.ar (Caddy, TLS + basic auth)
+               -> localhost:5232 (Radicale, CalDAV)
+                 -> /var/lib/radicale/collections/ (calendar data on disk)
+
+Daily at 3:00 AM:
+  systemd timer -> backup-calendar.sh -> git clone/pull notes repo
+                                         -> rsync calendar data
+                                         -> git commit + push
+```
+
+Calendar data is backed up to the `notes` git bare repo via a systemd timer
+that runs daily at 3:00 AM. The timer copies calendar files to a git working
+copy, commits, and pushes to rammstein (auto-mirrors to sophon).
+
+### Where data lives
+
+| Location | Path | Content |
+|----------|------|---------|
+| rammstein | `/var/lib/radicale/collections/` | Calendar data (plain files on disk) |
+| rammstein | `/var/lib/radicale/backup/` | Git working copy for backup |
+| rammstein + sophon | `notes` bare repo | Calendar backup in `calendar/` directory |
+
+### Setup (one-time, already done by Ansible)
+
+The Radicale role handles everything. What was deployed:
+- `radicale3` package installed on rammstein
+- `httpd-tools` installed (for htpasswd)
+- Radicale config at `/etc/radicale/config` (localhost bind, bcrypt auth)
+- htpasswd file at `/etc/radicale/users` (user: nacho, bcrypt-hashed)
+- Hardened systemd service `radicale.service`
+- Caddy reverse proxy block for `caldav.randazzo.ar`
+- SSH key for radicale user (to push to git bare repo)
+- systemd timer `radicale-backup.timer` (daily at 3:00 AM)
+- Backup script at `/etc/radicale/backup-calendar.sh`
+
+### Prerequisites (manual, one-time)
+
+1. **DNS:** Point `caldav.randazzo.ar` to rammstein's IP at your registrar
+2. **Vault:** Add `radicale_password` to the Ansible vault:
+   ```bash
+   ansible-vault edit inventory/group_vars/all/vault.yml
+   # Add: radicale_password: "your-strong-password"
+   ```
+3. **pass:** Store the password for easy lookup:
+   ```bash
+   pass insert calendar/radicale
+   ```
+4. **Deploy:** Run the playbook:
+   ```bash
+   ansible-playbook playbooks/radicale.yml --ask-vault-pass
+   ```
+
+### Connecting your phone
+
+1. Open your phone's calendar app settings
+2. Add a new CalDAV account:
+   - **Server:** `https://caldav.randazzo.ar`
+   - **Username:** `nacho`
+   - **Password:** (look it up with `pass show calendar/radicale`)
+3. The phone will sync calendars over HTTPS
+
+**Android:** Settings -> Accounts -> Add Account -> CalDAV.
+If your phone doesn't have a built-in CalDAV client, use DAVx5 (open source,
+F-Droid). Enter the server URL, username, and password. DAVx5 syncs
+automatically in the background.
+
+**iOS:** Settings -> Calendar -> Accounts -> Add Account -> Other ->
+Add CalDAV Account. Server: `https://caldav.randazzo.ar`.
+
+### Connecting your laptop
+
+**GNOME Calendar:** Settings -> Online Accounts -> Add CalDAV.
+Server: `https://caldav.randazzo.ar`, username: `nacho`.
+
+**Thunderbird:** File -> New -> Calendar -> On the Network -> CalDAV.
+URL: `https://caldav.randzzo.ar`, username: `nacho`.
+
+### Verifying the deployment
+
+```bash
+# 1. Radicale service running?
+ssh rammstein 'systemctl status radicale'
+
+# 2. Caddy proxying correctly?
+curl -I https://caldav.randazzo.ar
+# Should return 401 (Unauthorized) without credentials, 200 with
+
+# 3. Test with credentials (prompts for password)
+curl -u nacho -I https://caldav.randazzo.ar
+# Should return 200
+
+# 4. Radicale responding on localhost?
+ssh rammstein 'curl -u nacho -I http://localhost:5232'
+# Should return 200
+
+# 5. Calendar data directory exists?
+ssh rammstein 'ls -la /var/lib/radicale/collections/'
+# Empty until a client creates a calendar
+
+# 6. Backup timer enabled?
+ssh rammstein 'systemctl status radicale-backup.timer'
+
+# 7. Backup script exists?
+ssh rammstein 'cat /etc/radicale/backup-calendar.sh'
+```
+
+### Checking status
+
+```bash
+# Radicale running?
+ssh rammstein 'systemctl status radicale'
+
+# Check calendar data on disk
+ssh rammstein 'ls -R /var/lib/radicale/collections/'
+
+# Backup timer status
+ssh rammstein 'systemctl status radicale-backup.timer'
+
+# When is the next backup?
+ssh rammstein 'systemctl list-timers radicale-backup.timer'
+```
+
+### Checking backup status
+
+```bash
+# Check last backup run
+ssh rammstein 'journalctl -u radicale-backup.service -n 20'
+
+# Check the backup repo log
+ssh rammstein 'cd /var/lib/radicale/backup && git log --oneline -5'
+
+# Verify calendar data is in the notes repo
+ssh rammstein 'ls /var/lib/radicale/backup/calendar/'
+
+# Run backup manually (test)
+ssh rammstein 'sudo systemctl start radicale-backup.service'
+ssh rammstein 'journalctl -u radicale-backup.service -n 20'
+```
+
+### Troubleshooting
+
+```bash
+# Radicale not starting
+ssh rammstein 'journalctl -u radicale -f'
+
+# Caddy proxy not working
+curl -I https://caldav.randazzo.ar
+ssh rammstein 'grep -A10 "radicale" /etc/caddy/Caddyfile'
+
+# Calendar not syncing to phone
+# 1. Check phone has internet (doesn't need WireGuard -- Caddy is public)
+# 2. Check password is correct (pass show calendar/radicale)
+# 3. Check Radicale is running (ssh rammstein 'systemctl status radicale')
+# 4. Check Caddy is proxying (curl -I https://caldav.randazzo.ar)
+# 5. Check Radicale responds on localhost (ssh rammstein 'curl -u nacho -I http://localhost:5232')
+
+# Backup not running
+ssh rammstein 'systemctl status radicale-backup.timer'
+ssh rammstein 'journalctl -u radicale-backup.service -n 50'
+
+# DNS not resolving
+dig caldav.randazzo.ar +short
+# Should return rammstein's IP
+```
+
+---
+
 ## Quick Reference: File Locations
 
 | What | Where | Notes |
@@ -827,92 +1007,8 @@ echo "test" | gpg --encrypt --recipient <key-id> | gpg --decrypt
 | Restic repos | sophon: `/home/restic/backups`, rammstein: `/home/restic/backups` | Encrypted |
 | Caddyfile | `/etc/caddy/Caddyfile` on rammstein | Generated by Ansible |
 | WireGuard config | `/etc/wireguard/wg0.conf` on each host | Generated by Ansible |
-
----
-
-## 11. Radicale (Calendar)
-
-### What it is
-
-Radicale is a lightweight CalDAV server running on rammstein. It provides
-calendar sync to phone and laptop without depending on a provider. Caddy
-handles TLS and reverse proxies to Radicale on localhost:5232.
-
-### Architecture
-
-```
-Phone/Laptop -> https://caldav.randazzo.ar (Caddy, TLS)
-               -> localhost:5232 (Radicale, CalDAV)
-                 -> /var/lib/radicale/collections/ (calendar data on disk)
-```
-
-Calendar data is backed up to the `notes` git bare repo via a daily cron job
-at 3:00 AM. The cron job copies calendar files to a git working copy, commits,
-and pushes to rammstein.
-
-### Where data lives
-
-| Location | Path | Content |
-|----------|------|---------|
-| rammstein | `/var/lib/radicale/collections/` | Calendar data (plain files on disk) |
-| rammstein | `/var/lib/radicale/backup/` | Git working copy for backup |
-| rammstein + sophon | `notes` bare repo | Calendar backup in `calendar/` directory |
-
-### Connecting your phone
-
-1. Open your phone's calendar app settings
-2. Add a new CalDAV account:
-   - **Server:** `https://caldav.randazzo.ar`
-   - **Username:** `nacho`
-   - **Password:** (stored in pass as `calendar/radicale`)
-3. The phone will sync calendars over HTTPS
-
-### Connecting your laptop
-
-Most Linux calendar apps (GNOME Calendar, KDE KOrganizer, Thunderbird) support
-CalDAV. Add a calendar with the same settings as above.
-
-### Checking status
-
-```bash
-# Radicale running?
-ssh rammstein 'systemctl status radicale'
-
-# Test CalDAV endpoint
-curl -u nacho -I https://caldav.randazzo.ar
-# (prompts for password, should return 200 or 401)
-
-# Check calendar data on disk
-ssh rammstein 'ls -R /var/lib/radicale/collections/'
-```
-
-### Checking backup status
-
-```bash
-# Check if the cron job ran
-ssh rammstein 'grep backup-calendar /var/log/cron 2>/dev/null || journalctl -t cron -n 20'
-
-# Check the backup repo
-ssh rammstein 'cd /var/lib/radicale/backup && git log --oneline -5'
-
-# Verify calendar data is in the notes repo
-ssh rammstein 'ls /var/lib/radicale/backup/calendar/'
-```
-
-### Troubleshooting
-
-```bash
-# Radicale not starting
-ssh rammstein 'journalctl -u radicale -f'
-
-# Caddy proxy not working
-curl -I https://caldav.randzzo.ar
-ssh rammstein 'grep radicale /etc/caddy/Caddyfile'
-
-# Calendar not syncing to phone
-# 1. Check phone has internet (doesn't need WireGuard -- Caddy is public)
-# 2. Check password is correct
-# 3. Check Radicale is running
-# 4. Check Caddy is proxying
-ssh rammstein 'curl -u nacho -I http://localhost:5232'
-```
+| Radicale config | `/etc/radicale/config` on rammstein | Generated by Ansible |
+| Radicale htpasswd | `/etc/radicale/users` on rammstein | bcrypt-hashed, mode 0640 |
+| Radicale data | `/var/lib/radicale/collections/` on rammstein | Calendar data on disk |
+| Radicale backup | `/var/lib/radicale/backup/` on rammstein | Git working copy for backup |
+| Radicale backup script | `/etc/radicale/backup-calendar.sh` on rammstein | Runs daily via systemd timer |
