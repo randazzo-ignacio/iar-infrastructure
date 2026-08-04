@@ -18,6 +18,9 @@ radicale_port: 5232
 # -- Public domain for CalDAV (served by Caddy) --
 radicale_domain: "caldav.randazzo.ar"
 
+# -- Caddy config path (must match caddy role default) --
+caddy_config_path: "/etc/caddy/Caddyfile"
+
 # -- Data storage --
 radicale_data_dir: "/var/lib/radicale/collections"
 radicale_config_dir: "/etc/radicale"
