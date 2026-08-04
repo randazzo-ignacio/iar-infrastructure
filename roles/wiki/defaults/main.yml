@@ -14,8 +14,8 @@ wiki_domain: "wiki.randazzo.ar"
 wiki_source_dir: "/var/lib/wiki/source"
 # Build output (served by Caddy)
 wiki_build_dir: "/var/lib/wiki/build"
-# Bare repo path (created by git-repo role)
-wiki_bare_repo: "/home/git/repos/wiki.git"
+# Bare repo path (SSH access via git user, not local path)
+wiki_bare_repo: "git@10.66.0.1:/home/git/repos/wiki.git"
 
 # -- Build dependencies --
 wiki_packages:

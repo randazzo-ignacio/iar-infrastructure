@@ -24,6 +24,7 @@ rm -rf "{{ wiki_build_dir }}"/*
 cp -r "$SOURCE_DIR/build/"* "{{ wiki_build_dir }}/"
 
 # Copy static assets (CSS, etc.)
+mkdir -p "{{ wiki_build_dir }}/_wiki"
 cp -r "$SOURCE_DIR/_wiki/"* "{{ wiki_build_dir }}/_wiki/" 2>/dev/null || true
 
 echo "[build-wiki] Done."
