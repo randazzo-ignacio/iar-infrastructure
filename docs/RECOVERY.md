@@ -17,7 +17,6 @@
 
 3. **Update DNS** at your registrar:
    - randazzo.ar -> new proxy IP
-   - 0b.ar -> new proxy IP
    - i.ar -> new proxy IP
 
 4. **Provision admin users** on each new server (manual, pre-Ansible):
@@ -45,7 +44,7 @@
    curl -I https://randazzo.ar
    curl -I https://i.ar
    # Ollama
-   ssh rammstein 'curl http://10.66.0.3:11434/api/tags'
+   ssh sophon 'curl http://10.66.0.5:11434/api/tags'
    ```
 
 ---
@@ -61,7 +60,6 @@
    ansible-playbook playbooks/base.yml --ask-vault-pass --limit <host>
    ansible-playbook playbooks/wireguard.yml --ask-vault-pass
    ansible-playbook playbooks/caddy.yml --ask-vault-pass --limit <host>
-   ansible-playbook playbooks/ollama.yml --ask-vault-pass --limit <host>
    ```
 
 ---
@@ -82,21 +80,6 @@
 3. Re-run WireGuard on all hosts:
    ```bash
    ansible-playbook playbooks/wireguard.yml --ask-vault-pass
-   ```
-
----
-
-## Scenario 4: AI Agent SSH Key Compromise
-
-1. Generate new keypair for the AI agent.
-2. Update vault:
-   ```bash
-   ansible-vault edit inventory/group_vars/all/vault.yml
-   # Replace ai_agent_ssh_public_key
-   ```
-3. Re-run:
-   ```bash
-   ansible-playbook playbooks/ai_playground.yml --ask-vault-pass
    ```
 
 ---
@@ -126,10 +109,14 @@ ssh rammstein 'wg show wg0'
 # Check web services
 curl -I https://randazzo.ar
 curl -I https://i.ar
-curl -I https://0b.ar
-curl -I https://grafana.i.ar
+curl -I https://camaras.randazzo.ar
 
 # Check Ollama
-ssh rammstein 'curl -s http://10.66.0.3:11434/api/tags | jq -r ".models[].name"'
-ssh rammstein 'curl -s http://10.66.0.5:11434/api/tags | jq -r ".models[].name"'
+ssh sophon 'curl -s http://10.66.0.5:11434/api/tags | jq -r ".models[].name"'
+
+# Check git repos (list bare repos on rammstein)
+ssh rammstein 'ls /home/git/repos/'
+
+# Check restic snapshots (on sophon, local target)
+ssh sophon 'RESTIC_PASSWORD_FILE=/home/nacho/.config/restic-password restic --repo /home/restic/backups snapshots'
 ```

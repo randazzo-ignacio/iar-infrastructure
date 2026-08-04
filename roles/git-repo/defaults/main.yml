@@ -7,8 +7,11 @@ git_repo_root: "/home/git/repos"
 # User that owns the bare repos (and that clients SSH as to push/pull)
 git_repo_user: "git"
 
-# List of repo names to create (without .git suffix)
-# Defined in group_vars/all/main.yml (single source of truth)
+# List of repo names to create (without .git suffix).
+# DISCOVERED DYNAMICALLY by playbooks/git-repos.yml -- it scans ~/repos/
+# on the Ansible control node (yoga) for directories containing .git.
+# To add a new repo: clone or init it in ~/repos/, then re-run the playbook.
+# This variable is injected by the playbook; the empty list is a fallback.
 git_bare_repos: []
 
 # SSH authorized keys: copied from the ansible user's authorized_keys.

@@ -2,21 +2,25 @@
 # Single source of truth for domain names. Used by caddy, static-site.
 # Consolidated 2026-08-04: 0b.ar dropped, i.ar moved to rammstein.
 domains:
-  proxy: "randazzo.ar"
+  proxy: "randzzo.ar"
   proxy_alt: "randazzo.com.ar"
   project: "i.ar"
 
 # ── Git bare repos ─────────────────────────────────────────
-# Single source of truth for repo names. Applied to all git_servers.
-# Mirror target is set per-host (each host mirrors to the other).
-git_bare_repos:
-  - finance
-  - inventory
-  - notes
-  - concepts
-  - references
-  - kicad-projects
-  - password-store
+# DISCOVERED DYNAMICALLY: playbooks/git-repos.yml scans ~/repos/ on the
+# Ansible control node (yoga) for directories containing .git.
+# To add a new repo: clone or init it in ~/repos/, re-run the playbook.
+# To remove a repo: manually delete the bare repo on rammstein + sophon.
+# The list below is kept for reference only (the original 7 infrastructure
+# repos). It is no longer used by the git-repo role.
+# git_bare_repos:
+#   - finance
+#   - inventory
+#   - notes
+#   - concepts
+#   - references
+#   - kicad-projects
+#   - password-store
 
 # ── WireGuard (shared) ─────────────────────────────────────
 # Hub-and-spoke mesh. rammstein is the hub (wg_hub group).

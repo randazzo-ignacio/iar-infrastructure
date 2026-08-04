@@ -10,9 +10,10 @@ pass_gpg_id: ""
 
 # Git remotes for the password-store repo.
 # origin = rammstein (primary, auto-mirrors to sophon via post-receive hook).
+# Paths must match git_repo_root from the git-repo role (/home/git/repos).
 pass_git_remotes:
-  rammstein: "git@10.66.0.1:/srv/git/password-store.git"
-  sophon: "git@10.66.0.5:/srv/git/password-store.git"
+  rammstein: "git@10.66.0.1:/home/git/repos/password-store.git"
+  sophon: "git@10.66.0.5:/home/git/repos/password-store.git"
 
 # Git identity for pass repo commits
 pass_git_name: "Nacho Randazzo"

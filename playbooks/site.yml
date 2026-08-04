@@ -5,6 +5,9 @@
 # Consolidated 2026-08-04: daftpunk + greenday killed.
 # Removed: ai_playground, monitoring, matrix, node-exporter groups.
 # rammstein is sole VPS. sophon is local GPU + Frigate. yoga is daily driver.
+#
+# Git repos are discovered dynamically by scanning ~/repos/ on the
+# Ansible control node (yoga). See playbooks/git-repos.yml for details.
 
 - name: Base configuration (all hosts)
   hosts: all
@@ -36,9 +39,29 @@
     - role: caddy
       tags: [caddy]
 
+- name: Scan local repos directory for git repositories
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Scan ~/repos for git repositories
+      shell: |
+        for d in {{ lookup('env', 'HOME') }}/repos/*/; do
+          if [ -d "${d}.git" ] || [ -f "${d}.git" ]; then
+            basename "$d"
+          fi
+        done
+      register: repo_scan
+      changed_when: false
+
+    - name: Set git_bare_repos fact from scan results
+      set_fact:
+        git_bare_repos: "{{ repo_scan.stdout_lines }}"
+
 - name: Git bare repos (rammstein + sophon)
   hosts: rammstein, sophon
   become: true
+  vars:
+    git_bare_repos: "{{ hostvars['localhost']['git_bare_repos'] }}"
   roles:
     - role: git-repo
       tags: [git-repo]

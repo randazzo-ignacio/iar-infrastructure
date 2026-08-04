@@ -2,12 +2,42 @@
 # playbooks/git-repos.yml -- Create bare git repos on rammstein + sophon.
 # Usage: ansible-playbook playbooks/git-repos.yml --ask-vault-pass
 #
-# rammstein is primary, sophon is mirror. Both have identical repo lists.
+# Repo list is discovered dynamically by scanning ~/repos/ on the
+# Ansible control node (yoga). Any directory containing a .git
+# directory or file is treated as a git repository. This means:
+#   - Add a repo: clone or init in ~/repos/, re-run this playbook
+#   - Remove a repo: manually delete the bare repo on rammstein + sophon
+#
+# rammstein is primary, sophon is mirror. Both get identical repo lists.
 # Post-receive hooks auto-mirror to each other over WireGuard.
+
+- name: Scan local repos directory for git repositories
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Scan ~/repos for git repositories
+      shell: |
+        for d in {{ lookup('env', 'HOME') }}/repos/*/; do
+          if [ -d "${d}.git" ] || [ -f "${d}.git" ]; then
+            basename "$d"
+          fi
+        done
+      register: repo_scan
+      changed_when: false
+
+    - name: Set git_bare_repos fact from scan results
+      set_fact:
+        git_bare_repos: "{{ repo_scan.stdout_lines }}"
+
+    - name: Show discovered repos
+      debug:
+        msg: "Found {{ git_bare_repos | length }} repos: {{ git_bare_repos }}"
 
 - name: Git bare repos on rammstein (primary)
   hosts: rammstein
   become: true
+  vars:
+    git_bare_repos: "{{ hostvars['localhost']['git_bare_repos'] }}"
   roles:
     - role: git-repo
       tags: [git-repo]
@@ -15,6 +45,8 @@
 - name: Git bare repos on sophon (mirror)
   hosts: sophon
   become: true
+  vars:
+    git_bare_repos: "{{ hostvars['localhost']['git_bare_repos'] }}"
   roles:
     - role: git-repo
       tags: [git-repo]

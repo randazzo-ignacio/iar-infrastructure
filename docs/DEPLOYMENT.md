@@ -110,19 +110,19 @@ curl -I https://camaras.randazzo.ar
 ### 3.4 Verify Git Repos
 ```bash
 # On yoga, test clone:
-git clone git@10.66.0.1:/srv/git/notes.git
+git clone git@10.66.0.1:/home/git/repos/notes.git
 cd notes && echo "test" > README.md && git add . && git commit -m "test" && git push
 # Verify mirror on sophon:
-ssh sophon 'ls /srv/git/notes.git/objects'
+ssh sophon 'ls /home/git/repos/notes.git/objects'
 ```
 
 ### 3.5 Verify Restic
 ```bash
 # Manual backup test on yoga:
-sudo restic --repo sftp:restic@10.66.0.5:/srv/restic backup /home/nacho/Documents
-sudo restic --repo sftp:restic@10.66.0.1:/srv/restic backup /home/nacho/Documents
+sudo restic --repo sftp:restic@10.66.0.5:/home/restic/backups backup /home/nacho/Documents
+sudo restic --repo sftp:restic@10.66.0.1:/home/restic/backups backup /home/nacho/Documents
 # Check snapshots:
-sudo restic --repo sftp:restic@10.66.0.5:/srv/restic snapshots
+sudo restic --repo sftp:restic@10.66.0.5:/home/restic/backups snapshots
 ```
 
 ---
@@ -134,7 +134,7 @@ sudo restic --repo sftp:restic@10.66.0.5:/srv/restic snapshots
 rm -rf wg-keys/
 ```
 
-### 4.2 Save Backup
+ 4.2 Save Backup
 Store in a secure location:
 - Vault password
 - SSH private key (`~/.ssh/id_ed25519`)
@@ -157,7 +157,7 @@ Individual roles can be run independently:
 | `playbooks/base.yml` | Base hardening only | All |
 | `playbooks/wireguard.yml` | WG mesh only | All |
 | `playbooks/caddy.yml` | Caddy only | web_servers |
-| `playbooks/git-repos.yml` | Git bare repos only | rammstein, sophon |
+| `playbooks/git-repos.yml` | Git bare repos (scans ~/repos/ on yoga) | rammstein, sophon |
 | `playbooks/pass.yml` | pass password manager | yoga |
 | `playbooks/restic.yml` | Restic backup setup | rammstein, sophon, yoga |
 | `playbooks/portfolio-page.yml` | Deploy portfolio page | web_servers |
