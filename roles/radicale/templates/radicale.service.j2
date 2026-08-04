@@ -24,7 +24,8 @@ ProtectHome=yes
 ReadWritePaths={{ radicale_data_dir }} {{ radicale_git_backup_repo }}
 ProtectKernelTunables=yes
 ProtectControlGroups=yes
-RestrictAddressFamilies=AF_INET AF_INET6
+# AF_UNIX needed for systemd journal logging
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
 RestrictRealtime=yes
