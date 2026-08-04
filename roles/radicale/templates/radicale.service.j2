@@ -1,0 +1,33 @@
+# {{ ansible_managed }}
+# Radicale systemd service
+# Runs as the radicale system user, binds to WireGuard IP only.
+
+[Unit]
+Description=Radicale CalDAV/CardDAV Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=radicale
+Group=radicale
+ExecStart=/usr/bin/radicale --config {{ radicale_config_dir }}/config
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths={{ radicale_data_dir }} {{ radicale_git_backup_repo }}
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

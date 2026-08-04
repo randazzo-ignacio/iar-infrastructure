@@ -1,0 +1,144 @@
+---
+# roles/radicale/tasks/main.yml
+# Installs and configures Radicale (CalDAV server) on rammstein.
+#
+# Architecture:
+#   Phone/Laptop -> https://caldav.randzzo.ar (Caddy, TLS + basic auth)
+#                   -> localhost:5232 (Radicale)
+#
+# Radicale binds to localhost only. Caddy is the public entry point.
+# Calendar data is backed up to the notes git bare repo via cron.
+#
+# Authentication: htpasswd-style basic auth (single user).
+# Password is stored in the Ansible vault as radicale_password.
+
+# -- Install Radicale --
+- name: Install Radicale
+  dnf:
+    name: "{{ radicale_package }}"
+    state: present
+
+# -- Create radicale user (system user) --
+- name: Create radicale system user
+  user:
+    name: radicale
+    system: true
+    create_home: false
+    home: "{{ radicale_data_dir }}"
+
+# -- Ensure directories exist --
+- name: Ensure config directory exists
+  file:
+    path: "{{ radicale_config_dir }}"
+    state: directory
+    owner: root
+    group: radicale
+    mode: '0750'
+
+- name: Ensure data directory exists
+  file:
+    path: "{{ radicale_data_dir }}"
+    state: directory
+    owner: radicale
+    group: radicale
+    mode: '0750'
+
+# -- Generate htpasswd file for authentication --
+- name: Generate htpasswd file
+  copy:
+    dest: "{{ radicale_config_dir }}/users"
+    content: "{{ radicale_username }}:{{ radicale_password | password_hash('bcrypt') }}\n"
+    owner: root
+    group: radicale
+    mode: '0640'
+  no_log: true
+
+# -- Deploy Radicale config --
+- name: Deploy Radicale config
+  template:
+    src: config.j2
+    dest: "{{ radicale_config_dir }}/config"
+    owner: root
+    group: radicale
+    mode: '0640'
+  notify: restart radicale
+
+# -- Deploy systemd service --
+- name: Deploy Radicale systemd service
+  template:
+    src: radicale.service.j2
+    dest: /etc/systemd/system/radicale.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart radicale
+
+# -- Enable and start Radicale --
+- name: Enable and start Radicale
+  service:
+    name: radicale
+    state: started
+    enabled: true
+    daemon_reload: true
+
+# -- Add Caddy reverse proxy for Radicale --
+- name: Add Radicale site to Caddy
+  blockinfile:
+    path: "{{ caddy_config_path }}"
+    marker: "# {mark} ANSIBLE MANAGED -- Radicale"
+    block: |
+      {{ radicale_domain }} {
+          reverse_proxy {{ radicale_host }}:{{ radicale_port }}
+          encode gzip zstd
+          header {
+              Strict-Transport-Security "max-age=31536000; includeSubDomains"
+              X-Content-Type-Options nosniff
+              X-Frame-Options DENY
+              Referrer-Policy no-referrer
+          }
+      }
+  notify: reload caddy
+
+# -- Git backup cron job --
+# Clones the notes repo, copies calendar data, commits, pushes.
+- name: Ensure backup working copy directory exists
+  file:
+    path: "{{ radicale_git_backup_repo }}"
+    state: directory
+    owner: radicale
+    group: radicale
+    mode: '0750'
+
+- name: Clone notes repo for calendar backup (if not already cloned)
+  command: "git clone {{ radicale_git_remote }} {{ radicale_git_backup_repo }}"
+  args:
+    creates: "{{ radicale_git_backup_repo }}/.git"
+  become_user: radicale
+  ignore_errors: true
+
+- name: Deploy calendar backup script
+  template:
+    src: backup-calendar.sh.j2
+    dest: "{{ radicale_config_dir }}/backup-calendar.sh"
+    owner: root
+    group: radicale
+    mode: '0750'
+
+- name: Configure git identity for radicale user
+  git_config:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    scope: global
+    user: radicale
+  loop:
+    - { name: "user.name", value: "Radicale Backup" }
+    - { name: "user.email", value: "radicale@rammstein" }
+
+- name: Add cron job for calendar backup
+  cron:
+    name: "Backup Radicale calendar data to git"
+    user: radicale
+    hour: "{{ radicale_backup_cron_hour }}"
+    minute: "{{ radicale_backup_cron_minute }}"
+    job: "{{ radicale_config_dir }}/backup-calendar.sh"
+    state: present

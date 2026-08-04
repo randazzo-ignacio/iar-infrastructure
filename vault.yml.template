@@ -35,6 +35,11 @@ pass_gpg_id:
 # Also store on paper in secure physical location (DRP).
 restic_password: "CHANGE_ME"
 
+# ── Radicale CalDAV password ────────────────────────────────
+# Used for basic auth on the CalDAV server (caldav.randazzo.ar).
+# The phone and laptop use this password to connect.
+radicale_password: "CHANGE_ME"
+
 # ── Frigate RTSP camera credentials ────────────────────────
 # Shared across all cameras (user/password in RTSP URLs)
 frigate_camera_rtsp_user: "CAMERA_USER_HERE"

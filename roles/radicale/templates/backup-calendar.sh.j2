@@ -1,0 +1,31 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Backup Radicale calendar data to the notes git bare repo.
+# Runs daily via cron as the radicale user.
+#
+# Copies calendar collection files into a git working copy,
+# commits changes, and pushes to rammstein's bare repo.
+
+set -e
+
+BACKUP_REPO="{{ radicale_git_backup_repo }}"
+DATA_DIR="{{ radicale_data_dir }}"
+CALENDAR_DIR="${BACKUP_REPO}/calendar"
+
+# Ensure backup repo exists and is up to date
+cd "${BACKUP_REPO}"
+git pull --quiet --rebase 2>/dev/null || true
+
+# Ensure calendar directory exists in the repo
+mkdir -p "${CALENDAR_DIR}"
+
+# Copy calendar data (rsync preserves structure, deletes removed files)
+rsync -a --delete --exclude='.git' "${DATA_DIR}/" "${CALENDAR_DIR}/"
+
+# Commit and push if there are changes
+cd "${BACKUP_REPO}"
+git add calendar/
+if ! git diff --cached --quiet; then
+    git commit --quiet -m "Calendar backup: $(date '+%Y-%m-%d %H:%M')"
+    git push --quiet origin main 2>/dev/null || true
+fi

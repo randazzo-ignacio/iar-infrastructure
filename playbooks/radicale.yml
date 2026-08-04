@@ -1,0 +1,14 @@
+---
+# playbooks/radicale.yml -- Deploy Radicale CalDAV server on rammstein.
+# Usage: ansible-playbook playbooks/radicale.yml --ask-vault-pass
+#
+# Radicale binds to the WireGuard IP (10.66.0.1:5232) only.
+# Phone and laptop connect over WireGuard -- no public exposure.
+# Calendar data is backed up to the notes git bare repo via cron.
+
+- name: Deploy Radicale on rammstein
+  hosts: rammstein
+  become: true
+  roles:
+    - role: radicale
+      tags: [radicale]

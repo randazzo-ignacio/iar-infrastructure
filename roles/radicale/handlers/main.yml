@@ -1,0 +1,13 @@
+---
+# roles/radicale/handlers/main.yml
+
+- name: restart radicale
+  service:
+    name: radicale
+    state: restarted
+    daemon_reload: true
+
+- name: reload caddy
+  service:
+    name: caddy
+    state: reloaded

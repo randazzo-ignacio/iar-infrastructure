@@ -9,16 +9,19 @@
     ┌────────────────────┤                    │                            │
     │  randazzo.ar       │                    │  i.ar                     │
     │  randazzo.com.ar   │                    │  camaras.randazzo.ar       │
+    │  caldav.randazzo.ar│                    │                            │
     │  (→redirect)       │                    │                            │
-    │                    │                    │                            │
     ▼                    ▼                    ▼                            │
 ┌──────────────────────────────────────────────────────────────────────┐  │
 │  rammstein (sole VPS)                                                │  │
 │  VPS 2c/4GB -- Fedora 44                                            │  │
 │  Caddy + TLS (all domains)                                           │  │
 │  Static pages: randazzo.ar + i.ar                                    │  │
-│  Git bare repos (7 repos, mirrors to sophon)                         │  │
-│  Restic remote target (SFTP, restic user)                            │  │
+│  Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)           │  │
+│  Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)        │  │
+│  Radicale CalDAV server (localhost:5232)                             │  │
+│  Git bare repos (auto-discovered, mirrors to sophon)                │  │
+│  Restic remote target (SFTP, restic user)                             │  │
 │  WireGuard hub: 10.66.0.1                                            │  │
 └──────┬───────────────────────────────────────────────────────────────┘  │
        │   WireGuard (hub)                                                │
@@ -46,7 +49,7 @@
 
 | Host | WG IP | Domain | Role | Hardware |
 |------|-------|--------|------|----------|
-| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, camaras.randazzo.ar (proxy) | Caddy, WG hub, git bare repos, restic remote target | VPS 2c/4GB, Fedora 44 |
+| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV | VPS 2c/4GB, Fedora 44 |
 | yoga | 10.66.0.4 | (none) | Laptop (Silverblue), pass client, restic backup client | Intel Core Ultra |
 | sophon | 10.66.0.5 | (none) | Ollama GPU, Frigate NVR, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
 
@@ -71,9 +74,11 @@
 - Caddy reverse proxy with automatic TLS for all domains
 - Static pages: randazzo.ar (portfolio), i.ar (landing page)
 - Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)
+- Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)
+- Radicale CalDAV server (localhost only, Caddy provides TLS + public access)
 - WireGuard hub -- all inter-server traffic routes through here
-- Git bare repos (7 repos: finance, inventory, notes, concepts, references, kicad-projects, password-store) with auto-mirror to sophon
-- Restic remote target (restic user, SFTP access, /srv/restic)
+- Git bare repos (auto-discovered from ~/repos/ on yoga, auto-mirror to sophon)
+- Restic remote target (restic user, SFTP access, /home/restic/backups)
 - Public ports: 80 (HTTP), 443 (HTTPS), 51820/udp (WireGuard)
 
 ### yoga -- Laptop
@@ -86,8 +91,8 @@
 - Ollama with GPU offloading (RTX 3080)
 - Frigate NVR with NVIDIA TensorRT (8 cameras)
 - i.ar agent infrastructure (librarian agent)
-- Git bare repo mirror (7 repos, auto-mirror from rammstein)
-- Restic local target (/srv/restic, fast local backup for yoga)
+- Git bare repo mirror (auto-mirror from rammstein)
+- Restic local target (/home/restic/backups, fast local backup for yoga)
 - WireGuard spoke
 
 ## Security Model
@@ -95,10 +100,11 @@
 1. **Single entry point:** Only rammstein has public web ports (80/443). All other services are WireGuard-only.
 2. **TLS everywhere:** Caddy handles Let's Encrypt automatically for all domains.
 3. **No exposed Ollama:** Ollama binds to WireGuard IP only. Access requires VPN.
-4. **Key-only SSH:** Password authentication disabled. Per-host admin usernames prevent terminal confusion.
-5. **Firewalld:** Every host runs firewalld -- default deny incoming, allow SSH + WireGuard only.
-6. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
-7. **Shared SSH keys:** The ansible user's authorized_keys are copied to git and restic users. No separate keys -- if the ansible key is compromised, everything else is too. Separate keys add complexity without adding security.
+4. **Radicale behind Caddy:** Radicale binds to localhost only. Caddy provides TLS + public access via caldav.randazzo.ar. Basic auth protects the CalDAV endpoint.
+5. **Key-only SSH:** Password authentication disabled. Per-host admin usernames prevent terminal confusion.
+6. **Firewalld:** Every host runs firewalld -- default deny incoming, allow SSH + WireGuard only.
+7. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
+8. **Shared SSH keys:** The ansible user's authorized_keys are copied to git and restic users. No separate keys -- if the ansible key is compromised, everything else is too. Separate keys add complexity without adding security.
 
 ## Known Limitations
 

@@ -1,0 +1,35 @@
+---
+# roles/radicale/defaults/main.yml
+
+# Radicale is a lightweight CalDAV/CardDAV server.
+# Runs on rammstein, behind Caddy reverse proxy with TLS + basic auth.
+# Phone and laptop connect via https://caldav.randazzo.ar
+
+# -- Installation --
+radicale_package: "radicale"
+
+# -- Network --
+# Bind to localhost only -- Caddy is the public entry point.
+# Caddy proxies https://caldav.randazzo.ar -> localhost:5232
+radicale_host: "127.0.0.1"
+radicale_port: 5232
+
+# -- Public domain for CalDAV (served by Caddy) --
+radicale_domain: "caldav.randazzo.ar"
+
+# -- Data storage --
+radicale_data_dir: "/var/lib/radicale/collections"
+radicale_config_dir: "/etc/radicale"
+
+# -- Authentication --
+# Single user (Nacho). Password stored in vault as radicale_password.
+# Radicale uses htpasswd-style file for basic auth.
+radicale_username: "nacho"
+
+# -- Git backup --
+# Calendar data is backed up to the notes bare repo via cron.
+# A cron job copies the data dir to a git working copy and commits.
+radicale_git_backup_repo: "/var/lib/radicale/backup"
+radicale_git_remote: "git@10.66.0.1:/home/git/repos/notes.git"
+radicale_backup_cron_hour: "3"
+radicale_backup_cron_minute: "0"

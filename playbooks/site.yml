@@ -80,6 +80,13 @@
     - role: restic
       tags: [restic]
 
+- name: Radicale CalDAV server (rammstein only)
+  hosts: rammstein
+  become: true
+  roles:
+    - role: radicale
+      tags: [radicale]
+
 - name: Podman (all hosts)
   hosts: all
   become: true

@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+# Radicale configuration
+# See: https://radicale.org/v3.html#configuration
+
+[server]
+# Bind to localhost only -- Caddy is the public entry point with TLS
+hosts = {{ radicale_host }}:{{ radicale_port }}
+
+[auth]
+# bcrypt-hashed password in htpasswd-style file
+type = htpasswd
+htpasswd_filename = {{ radicale_config_dir }}/users
+# bcrypt is the most secure hash supported by Radicale
+htpasswd_encryption = bcrypt
+
+[storage]
+# Filesystem storage -- calendar data as plain files on disk
+type = multifilesystem
+filesystem_folder = {{ radicale_data_dir }}
+# Create folders if they don't exist
+filesystem_create_folder = true
+
+[web]
+# Disable built-in web UI -- we use CalDAV clients only
+type = none
