@@ -1,0 +1,26 @@
+[Unit]
+Description=i.ar Debug Container ({{ iar_debug_container_name }})
+After=network-online.target podman.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/podman rm -f {{ iar_debug_container_name }}
+ExecStart=/usr/bin/podman run \
+    --name {{ iar_debug_container_name }} \
+    --read-only \
+    --memory={{ iar_debug_memory_limit }} \
+    --security-opt no-new-privileges \
+    --cap-drop=all \
+    --network=host \
+    --tmpfs /tmp:rw,size=128m \
+    --tmpfs /run:rw,size=32m \
+    -v /:/host:ro \
+    -v /var/lib/{{ iar_debug_container_name }}/ssh:/home/{{ iar_debug_user }}/.ssh:ro \
+    {{ iar_debug_container_image }}
+ExecStop=/usr/bin/podman stop {{ iar_debug_container_name }}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+---
+# roles/iar-debug-container/defaults/main.yml
+
+# Enable/disable the debug container
+iar_debug_container_enabled: false
+
+# Container image name (must be built from i.ar repo: containers/images/iar-debug/)
+iar_debug_container_image: "iar-debug"
+
+# Container name (must be unique per host)
+iar_debug_container_name: "iar-debug"
+
+# SSH user inside the container
+iar_debug_user: "debug-agent"
+
+# SSH public key for the debug agent (reuse the i.ar agent key)
+# Must be set in vault or host_vars. Blank = fail closed.
+iar_debug_ssh_public_key: ""
+
+# Container resource limits
+iar_debug_memory_limit: "1g"
+
+# Host root mount path inside container (read-only)
+iar_debug_host_mount: "/host"
+
+# Whether to also deploy a pentest container (for on-site audits)
+iar_pentest_container_enabled: false
+iar_pentest_container_image: "iar-pentest"
+iar_pentest_container_name: "iar-pentest"

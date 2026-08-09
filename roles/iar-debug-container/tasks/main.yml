@@ -1,0 +1,115 @@
+---
+# roles/iar-debug-container/tasks/main.yml
+# Deploys a debug container on target servers for remote infrastructure inspection.
+# The container runs an SSH server with key-only auth. The agent SSHes in
+# over WireGuard to run diagnostic commands (journalctl, systemctl, etc.).
+# Host root filesystem is mounted read-only at /host.
+
+# -- Validate SSH key is provided --
+- name: Validate SSH public key is set
+  assert:
+    that: iar_debug_ssh_public_key | length > 0
+    msg: "iar_debug_ssh_public_key must be set in vault or host_vars"
+
+# -- Create debug-agent user on host (for SSH key deployment) --
+- name: Create debug-agent user
+  user:
+    name: "{{ iar_debug_user }}"
+    shell: /bin/bash
+    create_home: true
+
+- name: Deploy SSH key for debug-agent
+  authorized_key:
+    user: "{{ iar_debug_user }}"
+    key: "{{ iar_debug_ssh_public_key }}"
+
+# -- Check if container image exists --
+- name: Check if debug container image exists
+  command: "podman image exists {{ iar_debug_container_image }}"
+  register: debug_image_check
+  changed_when: false
+  failed_when: false
+
+- name: Warn if debug container image not found
+  debug:
+    msg: >
+      Container image '{{ iar_debug_container_image }}' not found on {{ inventory_hostname }}.
+      Build it from the i.ar repo: podman build -t {{ iar_debug_container_image }}
+      -f containers/images/iar-debug/Containerfile
+      Then push to this host or build locally.
+  when: debug_image_check.rc != 0
+
+# -- Create container data directory --
+- name: Create debug container data directory
+  file:
+    path: "/var/lib/{{ iar_debug_container_name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# -- Deploy SSH key into container volume --
+- name: Create SSH directory for debug container
+  file:
+    path: "/var/lib/{{ iar_debug_container_name }}/ssh"
+    state: directory
+    owner: "{{ iar_debug_user }}"
+    group: "{{ iar_debug_user }}"
+    mode: '0700'
+
+- name: Deploy SSH public key for debug container
+  copy:
+    content: "{{ iar_debug_ssh_public_key }}"
+    dest: "/var/lib/{{ iar_debug_container_name }}/ssh/authorized_keys"
+    owner: "{{ iar_debug_user }}"
+    group: "{{ iar_debug_user }}"
+    mode: '0644'
+
+# -- Deploy systemd service for debug container --
+- name: Deploy debug container systemd service
+  template:
+    src: iar-debug-container.service.j2
+    dest: "/etc/systemd/system/{{ iar_debug_container_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+# -- Enable and start debug container --
+- name: Enable and start debug container service
+  systemd:
+    name: "{{ iar_debug_container_name }}.service"
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: debug_image_check.rc == 0
+
+# -- Pentest container (for on-site audits) --
+- name: Check if pentest container image exists
+  command: "podman image exists {{ iar_pentest_container_image }}"
+  register: pentest_image_check
+  changed_when: false
+  failed_when: false
+  when: iar_pentest_container_enabled | bool
+
+- name: Deploy pentest container systemd service
+  template:
+    src: iar-pentest-container.service.j2
+    dest: "/etc/systemd/system/{{ iar_pentest_container_name }}.service"
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - iar_pentest_container_enabled | bool
+    - pentest_image_check.rc == 0
+  notify: reload systemd
+
+- name: Enable and start pentest container service
+  systemd:
+    name: "{{ iar_pentest_container_name }}.service"
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - iar_pentest_container_enabled | bool
+    - pentest_image_check.rc == 0

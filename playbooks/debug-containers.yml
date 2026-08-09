@@ -1,0 +1,11 @@
+---
+# playbooks/debug-containers.yml -- Deploy debug containers on servers
+# Usage: ansible-playbook playbooks/debug-containers.yml --vault-password-file .vault_pass
+
+- name: Debug containers on servers
+  hosts: debug_container_hosts
+  become: true
+  roles:
+    - role: iar-debug-container
+      when: iar_debug_container_enabled | default(false) | bool
+      tags: [debug-container]
