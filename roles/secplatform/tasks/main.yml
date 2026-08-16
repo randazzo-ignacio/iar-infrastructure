@@ -208,9 +208,20 @@
     name: "secplatform-{{ secplatform_env }}"
     state: started
   when: not (secplatform_rebuild | bool)
+
+
 # -- Agent Runner --
 # Deploy the host-side agent-runner service (bridges BFF and iar.sh).
 # Runs as a systemd service, not containerized. Needs podman access for iar.sh.
+
+- name: Create agent-runner directory
+  file:
+    path: /opt/secplatform
+    state: directory
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: "0755"
+  when: secplatform_agent_runner_enabled | bool
 
 - name: Deploy agent-runner script
   copy:
