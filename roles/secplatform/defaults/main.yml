@@ -4,8 +4,7 @@
 # Enable flag -- opt-in, fail closed.
 secplatform_enabled: false
 
-# Repo to clone. Uses the git mirror on sophon (bare repo).
-# The Ansible control node clones from here, or we clone directly on the host.
+# Repo to clone.
 secplatform_repo_url: ""
 secplatform_repo_branch: "main"
 
@@ -19,12 +18,30 @@ secplatform_env: "prod"
 secplatform_compose_project: "sp-{{ secplatform_env }}"
 
 # User that owns the deploy directory and runs podman compose.
-# Defaults to ansible_user -- set explicitly in host_vars if needed.
 secplatform_user: "{{ ansible_user }}"
 
 # Podman compose binary. podman v4+ includes compose subcommand.
 secplatform_compose_cmd: "podman compose"
 
 # Whether to force a rebuild of images on every Ansible run.
-# Set to false for faster runs when images are already built.
 secplatform_rebuild: false
+
+# -- .env configuration (replaces setup.sh) --
+# Host IP for .env (not critical for prod -- URLs are hardcoded in compose overrides).
+secplatform_host_ip: "127.0.0.1"
+
+# UID:GID for podman volume ownership.
+secplatform_uid_gid: "1000:1000"
+
+# Tenant passwords (override in vault for production).
+secplatform_tenant_acme_password: "acme-tenant-poc-secret"
+secplatform_tenant_globex_password: "globex-tenant-poc-secret"
+
+# Seed tenants -- must match keycloak realm JSONs and postgres init scripts.
+secplatform_tenants:
+  - acme
+  - globex
+
+# Postgres init scripts to chmod +x.
+secplatform_pg_init_scripts:
+  - 01-create-databases.sh

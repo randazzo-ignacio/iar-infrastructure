@@ -3,9 +3,8 @@
 # Deploys SecPlatform (multi-tenant SaaS) via podman compose.
 # Prerequisites: podman role must run first (installs podman).
 #
-# This role clones the repo, runs setup.sh (creates .env + tenant dirs),
-# and starts the stack as a systemd service. It does NOT manage the
-# full lifecycle (rebuild, reset, etc.) -- use spc.sh on the host for that.
+# This role clones the repo, creates .env + tenant directories,
+# and starts the stack as a systemd service.
 
 # -- Validate required variables --
 - name: Fail if secplatform_repo_url is not set
@@ -37,25 +36,75 @@
   become_user: "{{ secplatform_user }}"
   register: secplatform_repo_update
 
-# -- Run setup.sh (creates .env + tenant directories) --
-# Only run on first clone or if .env is missing.
+# -- Create .env (replaces setup.sh, non-interactive) --
 - name: Check if .env exists
   stat:
     path: "{{ secplatform_deploy_dir }}/.env"
   register: secplatform_env_file
 
-- name: Run setup.sh
-  command: "./setup.sh"
-  args:
-    chdir: "{{ secplatform_deploy_dir }}"
-    creates: "{{ secplatform_deploy_dir }}/.env"
+- name: Create .env
+  copy:
+    dest: "{{ secplatform_deploy_dir }}/.env"
+    content: |
+      HOST_IP={{ secplatform_host_ip | default('127.0.0.1') }}
+      KEYCLOAK_PUBLIC_URL=https://auth.i.ar
+      CLIENT_PORTAL_URL=https://app.i.ar/
+      UID_GID={{ secplatform_uid_gid | default('1000:1000') }}
+      TENANT_ACME_DB_PASSWORD={{ secplatform_tenant_acme_password | default('acme-tenant-poc-secret') }}
+      TENANT_GLOBEX_DB_PASSWORD={{ secplatform_tenant_globex_password | default('globex-tenant-poc-secret') }}
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: '0644'
   become: true
   become_user: "{{ secplatform_user }}"
   when: not secplatform_env_file.stat.exists
 
+# -- Create tenant directories (replaces setup.sh) --
+- name: Create tenant directories
+  file:
+    path: "{{ secplatform_deploy_dir }}/tenants/{{ item.0 }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: '0755'
+  become: true
+  become_user: "{{ secplatform_user }}"
+  loop: "{{ secplatform_tenants | product(['assets', 'vpns', 'findings', 'evidence', 'secrets', 'audit', 'jobs/queued', 'jobs/claimed', 'jobs/running', 'jobs/completed', 'jobs/failed']) | list }}"
+  when: not secplatform_env_file.stat.exists
+
+- name: Create tenant manifest files
+  copy:
+    dest: "{{ secplatform_deploy_dir }}/tenants/{{ item }}/tenant.json"
+    content: "{\"tenant_id\":\"{{ item }}\"}"
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: '0644'
+  become: true
+  become_user: "{{ secplatform_user }}"
+  loop: "{{ secplatform_tenants }}"
+  when: not secplatform_env_file.stat.exists
+
+# -- Make scripts executable (git may have lost the mode) --
+- name: Ensure scripts are executable
+  file:
+    path: "{{ secplatform_deploy_dir }}/{{ item }}"
+    mode: '0755'
+  loop:
+    - spc.sh
+    - reset.sh
+    - test-e2e.sh
+  become: true
+  become_user: "{{ secplatform_user }}"
+
+- name: Ensure postgres init scripts are executable
+  file:
+    path: "{{ secplatform_deploy_dir }}/postgres/init/{{ item }}"
+    mode: '0755'
+  loop: "{{ secplatform_pg_init_scripts | default([]) }}"
+  become: true
+  become_user: "{{ secplatform_user }}"
+
 # -- Create systemd service --
-# Mirrors the pattern used by monitoring and frigate roles.
-# oneshot + RemainAfterExit so `systemctl status` shows active when stack is up.
 - name: Deploy SecPlatform systemd service
   copy:
     dest: "/etc/systemd/system/secplatform-{{ secplatform_env }}.service"
