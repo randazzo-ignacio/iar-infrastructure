@@ -5,6 +5,7 @@
 #
 # This role clones the repo, creates .env + tenant directories,
 # installs docker-compose v2 (for proper depends_on + healthcheck support),
+# enables podman sockets (Docker-compatible API for docker-compose v2),
 # and starts the stack as a systemd service.
 
 # -- Validate required variables --
@@ -19,9 +20,9 @@
   when: secplatform_deploy_dir | length == 0
 
 # -- Install docker-compose v2 (Go binary) --
-# podman compose falls back to podman-compose (Python) which doesn't
-# support depends_on with condition: service_healthy. docker-compose v2
-# handles this correctly and podman compose will use it if found in PATH.
+# podman-compose (Python) doesn't support depends_on with
+# condition: service_healthy. docker-compose v2 does, and
+# podman compose will use it as the provider if found in PATH.
 - name: Check if docker-compose v2 is installed
   command: "docker-compose version --short"
   register: dc_check
@@ -40,6 +41,26 @@
 - name: Verify docker-compose v2 is working
   command: "docker-compose version --short"
   changed_when: false
+
+# -- Enable podman sockets --
+# docker-compose v2 connects via Docker-compatible socket API.
+# Podman provides this via podman.socket (systemd socket activation).
+# System socket: for the systemd service (runs as root).
+# User socket: for manual commands and the rebuild task.
+- name: Enable system podman socket
+  systemd:
+    name: podman.socket
+    state: started
+    enabled: true
+
+- name: Enable user podman socket (for manual spc.sh usage)
+  systemd:
+    name: podman.socket
+    state: started
+    enabled: true
+    scope: user
+  become: true
+  become_user: "{{ secplatform_user }}"
 
 # -- Clone or update the repo --
 - name: Ensure deploy directory parent exists
@@ -129,8 +150,8 @@
   become_user: "{{ secplatform_user }}"
 
 # -- Create systemd service --
-# Uses docker-compose v2 (not podman-compose) for proper healthcheck dependency support.
-# podman compose will find docker-compose in PATH and use it as the provider.
+# Runs as root (system service). Uses DOCKER_HOST to point docker-compose v2
+# at the podman system socket.
 - name: Deploy SecPlatform systemd service
   copy:
     dest: "/etc/systemd/system/secplatform-{{ secplatform_env }}.service"
@@ -145,6 +166,7 @@
       RemainAfterExit=yes
       WorkingDirectory={{ secplatform_deploy_dir }}
       Environment=COMPOSE_PROJECT_NAME={{ secplatform_compose_project }}
+      Environment=DOCKER_HOST=unix:///run/podman/podman.sock
       ExecStart=/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d
       ExecStop=/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml down
 
@@ -163,13 +185,14 @@
     enabled: true
 
 # -- Rebuild images if requested --
+# Runs as root to match the systemd service (root podman context).
+# The containers and images live in the root podman storage.
 - name: Rebuild SecPlatform images
   command: "/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d --build"
   args:
     chdir: "{{ secplatform_deploy_dir }}"
   environment:
     COMPOSE_PROJECT_NAME: "{{ secplatform_compose_project }}"
-  become: true
-  become_user: "{{ secplatform_user }}"
+    DOCKER_HOST: "unix:///run/podman/podman.sock"
   when: secplatform_rebuild | bool
   notify: restart secplatform
