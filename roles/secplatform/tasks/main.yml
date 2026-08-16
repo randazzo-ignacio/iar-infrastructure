@@ -231,6 +231,7 @@
     group: "{{ secplatform_user }}"
     mode: '0755'
     remote_src: true
+  notify: restart agent-runner
   when: secplatform_agent_runner_enabled | bool
 
 - name: Create agent-runner systemd service
