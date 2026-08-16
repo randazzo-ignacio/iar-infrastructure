@@ -1,0 +1,7 @@
+---
+# roles/secplatform/handlers/main.yml
+
+- name: restart secplatform
+  service:
+    name: "secplatform-{{ secplatform_env }}"
+    state: restarted

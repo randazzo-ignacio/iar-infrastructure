@@ -1,0 +1,100 @@
+---
+# roles/secplatform/tasks/main.yml
+# Deploys SecPlatform (multi-tenant SaaS) via podman compose.
+# Prerequisites: podman role must run first (installs podman).
+#
+# This role clones the repo, runs setup.sh (creates .env + tenant dirs),
+# and starts the stack as a systemd service. It does NOT manage the
+# full lifecycle (rebuild, reset, etc.) -- use spc.sh on the host for that.
+
+# -- Validate required variables --
+- name: Fail if secplatform_repo_url is not set
+  fail:
+    msg: "secplatform_repo_url must be set in host_vars"
+  when: secplatform_repo_url | length == 0
+
+- name: Fail if secplatform_deploy_dir is not set
+  fail:
+    msg: "secplatform_deploy_dir must be set in host_vars"
+  when: secplatform_deploy_dir | length == 0
+
+# -- Clone or update the repo --
+- name: Ensure deploy directory parent exists
+  file:
+    path: "{{ secplatform_deploy_dir | dirname }}"
+    state: directory
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: '0755'
+
+- name: Clone SecPlatform repo
+  git:
+    repo: "{{ secplatform_repo_url }}"
+    dest: "{{ secplatform_deploy_dir }}"
+    version: "{{ secplatform_repo_branch }}"
+    force: true
+  become: true
+  become_user: "{{ secplatform_user }}"
+  register: secplatform_repo_update
+
+# -- Run setup.sh (creates .env + tenant directories) --
+# Only run on first clone or if .env is missing.
+- name: Check if .env exists
+  stat:
+    path: "{{ secplatform_deploy_dir }}/.env"
+  register: secplatform_env_file
+
+- name: Run setup.sh
+  command: "./setup.sh"
+  args:
+    chdir: "{{ secplatform_deploy_dir }}"
+    creates: "{{ secplatform_deploy_dir }}/.env"
+  become: true
+  become_user: "{{ secplatform_user }}"
+  when: not secplatform_env_file.stat.exists
+
+# -- Create systemd service --
+# Mirrors the pattern used by monitoring and frigate roles.
+# oneshot + RemainAfterExit so `systemctl status` shows active when stack is up.
+- name: Deploy SecPlatform systemd service
+  copy:
+    dest: "/etc/systemd/system/secplatform-{{ secplatform_env }}.service"
+    content: |
+      [Unit]
+      Description=SecPlatform {{ secplatform_env }} (podman compose)
+      After=network-online.target podman.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory={{ secplatform_deploy_dir }}
+      Environment=COMPOSE_PROJECT_NAME={{ secplatform_compose_project }}
+      ExecStart={{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d
+      ExecStop={{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml down
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart secplatform
+
+# -- Enable and start --
+- name: Enable and start SecPlatform
+  service:
+    name: "secplatform-{{ secplatform_env }}"
+    state: started
+    enabled: true
+
+# -- Rebuild images if requested --
+- name: Rebuild SecPlatform images
+  command: "{{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d --build"
+  args:
+    chdir: "{{ secplatform_deploy_dir }}"
+  environment:
+    COMPOSE_PROJECT_NAME: "{{ secplatform_compose_project }}"
+  become: true
+  become_user: "{{ secplatform_user }}"
+  when: secplatform_rebuild | bool
+  notify: restart secplatform

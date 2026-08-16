@@ -78,3 +78,10 @@ restic_primary_repo: "/home/restic/backups"
 restic_backup_paths:
   - /home/nacho/repos
   - /home/nacho/.config
+# SecPlatform -- multi-tenant SaaS (podman compose)
+secplatform_enabled: true
+secplatform_repo_url: "git@10.66.0.1:/home/git/repos/iar-prod.git"
+secplatform_repo_branch: "main"
+secplatform_deploy_dir: "/home/nacho/repos/iar-prod"
+secplatform_env: "prod"
+secplatform_rebuild: true

@@ -13,6 +13,9 @@
     root * {{ site.root }}
     file_server
     encode gzip zstd
+{% elif site.type == 'revproxy' %}
+    reverse_proxy {{ site.target }}
+    encode gzip zstd
 {% elif site.type == 'proxy' %}
     reverse_proxy {{ hostvars[site.backend_host]['wg_ip'] }}:{{ site.backend_port }}
     encode gzip zstd

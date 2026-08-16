@@ -7,6 +7,9 @@ caddy_sites:
   - domain: "randazzo.ar"
     type: static
     root: "/var/www/randazzo.ar"
+  - domain: "autoplanes.randazzo.com.ar"
+    type: revproxy
+    target: "https://autoplanesrandazzo.framer.website"
   - domain: "randazzo.com.ar"
     type: redirect
     target: "https://randazzo.ar{uri}"
@@ -17,6 +20,19 @@ caddy_sites:
   - domain: "i.ar"
     type: static
     root: "/var/www/i.ar"
+  # SecPlatform (sophon via WireGuard)
+  - domain: "app.i.ar"
+    type: proxy
+    backend_host: sophon
+    backend_port: 8091
+  - domain: "app-bo.i.ar"
+    type: proxy
+    backend_host: sophon
+    backend_port: 8092
+  - domain: "auth.i.ar"
+    type: proxy
+    backend_host: sophon
+    backend_port: 8080
 
 # Static sites -- both deployed by static-site role
 portfolio_page_root: "/var/www/randazzo.ar"

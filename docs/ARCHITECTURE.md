@@ -7,16 +7,21 @@
                          │              INTERNET                           │
                          │                                                 │
     ┌────────────────────┤                    │                            │
-    │  randazzo.ar       │                    │  i.ar                     │
-    │  randazzo.com.ar   │                    │  camaras.randazzo.ar       │
-    │  caldav.randazzo.ar│                    │  wiki.randazzo.ar          │
-    │  (→redirect)       │                    │                            │
+    │  randazzo.ar       │                    │  i.ar (landing)            │
+    │  randazzo.com.ar   │                    │  app.i.ar (SecPlatform)    │
+    │  caldav.randazzo.ar│                    │  app-bo.i.ar (SecPlatform) │
+    │  (→redirect)       │                    │  auth.i.ar (Keycloak)      │
+    │                    │                    │  camaras.randazzo.ar       │
+    │                    │                    │  wiki.randazzo.ar          │
     ▼                    ▼                    ▼                            │
 ┌──────────────────────────────────────────────────────────────────────┐  │
 │  rammstein (sole VPS)                                                │  │
 │  VPS 2c/4GB -- Fedora 44                                            │  │
 │  Caddy + TLS (all domains)                                           │  │
 │  Static pages: randazzo.ar + i.ar                                    │  │
+│  Caddy proxy: app.i.ar -> sophon:8091 (SecPlatform client)          │  │
+│  Caddy proxy: app-bo.i.ar -> sophon:8092 (SecPlatform BO)           │  │
+│  Caddy proxy: auth.i.ar -> sophon:8080 (Keycloak)                   │  │
 │  Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)           │  │
 │  Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)        │  │
 │  Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build               │  │
@@ -30,19 +35,17 @@
        ═══════════════════════════════════════════════════════════════════ │
        │                                                                  │
        ▼                                              ▼                     │
-┌──────────────┐                              ┌──────────────────┐       │
-│    yoga      │                              │   sophon         │       │
-│  Intel Ultra │                              │ 12c/96GB        │       │
-│  Silverblue  │                              │ RTX 3080        │       │
-│  WG:10.66.0.4│                              │ Ollama GPU      │       │
-│  pass client │                              │ Frigate NVR     │       │
-│  restic      │                              │ Git bare repos  │       │
-│  backup      │                              │ (mirror of      │       │
-│              │                              │  rammstein)     │       │
-│              │                              │ Restic local    │       │
-│              │                              │  target         │       │
-│              │                              │ WG:10.66.0.5    │       │
-└──────────────┘                              └──────────────────┘       │
+┌──────────────┐                              ┌──────────────────────────┐ │
+│    yoga      │                              │   sophon                 │ │
+│  Intel Ultra │                              │ 12c/96GB, RTX 3080      │ │
+│  Silverblue  │                              │ Ollama GPU              │ │
+│  WG:10.66.0.4│                              │ Frigate NVR             │ │
+│  pass client │                              │ SecPlatform (podman)    │ │
+│  restic      │                              │ Git bare repos          │ │
+│  backup      │                              │ (mirror of rammstein)   │ │
+│              │                              │ Restic local target     │ │
+│              │                              │ WG:10.66.0.5            │ │
+└──────────────┘                              └──────────────────────────┘ │
                                                                             │
                          └─────────────────────────────────────────────────┘
 ```
@@ -51,9 +54,9 @@
 
 | Host | WG IP | Domain | Role | Hardware |
 |------|-------|--------|------|----------|
-| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy), wiki.randazzo.ar (static) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV, wiki build | VPS 2c/4GB, Fedora 44 |
+| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, app.i.ar (proxy), app-bo.i.ar (proxy), auth.i.ar (proxy), camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy), wiki.randazzo.ar (static) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV, wiki build | VPS 2c/4GB, Fedora 44 |
 | yoga | 10.66.0.4 | (none) | Laptop (Silverblue), pass client, restic backup client | Intel Core Ultra |
-| sophon | 10.66.0.5 | (none) | Ollama GPU, Frigate NVR, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
+| sophon | 10.66.0.5 | (none, proxied via rammstein) | Ollama GPU, Frigate NVR, SecPlatform, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
 
 ## Inventory Groups
 
@@ -65,6 +68,7 @@
 | git_servers | rammstein, sophon | Git bare repo hosts |
 | ollama_hosts | sophon | Ollama instances |
 | frigate_hosts | sophon | Frigate NVR |
+| secplatform_hosts | sophon | SecPlatform (podman compose) |
 | wg_hub | rammstein | WireGuard hub (single host) |
 | wg_peers | rammstein, sophon, yoga | All WG mesh participants |
 | gpu_hosts | sophon | NVIDIA GPU hosts |
@@ -75,6 +79,9 @@
 ### rammstein -- Sole VPS (Proxy Hub + Data Host)
 - Caddy reverse proxy with automatic TLS for all domains
 - Static pages: randazzo.ar (portfolio), i.ar (landing page)
+- Caddy proxy: app.i.ar -> sophon:8091 (SecPlatform customer portal)
+- Caddy proxy: app-bo.i.ar -> sophon:8092 (SecPlatform back-office)
+- Caddy proxy: auth.i.ar -> sophon:8080 (Keycloak OIDC)
 - Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)
 - Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)
 - Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build (wiki)
@@ -94,6 +101,7 @@
 ### sophon -- Local GPU Server + Data Mirror
 - Ollama with GPU offloading (RTX 3080)
 - Frigate NVR with NVIDIA TensorRT (8 cameras)
+- SecPlatform (multi-tenant SaaS via podman compose, proxied via rammstein)
 - i.ar agent infrastructure (librarian agent)
 - Git bare repo mirror (auto-mirror from rammstein)
 - Restic local target (/home/restic/backups, fast local backup for yoga)
@@ -104,12 +112,13 @@
 1. **Single entry point:** Only rammstein has public web ports (80/443). All other services are WireGuard-only.
 2. **TLS everywhere:** Caddy handles Let's Encrypt automatically for all domains.
 3. **No exposed Ollama:** Ollama binds to WireGuard IP only. Access requires VPN.
-4. **Radicale behind Caddy:** Radicale binds to localhost only. Caddy provides TLS + public access via caldav.randazzo.ar. Basic auth protects the CalDAV endpoint.
-5. **Wiki behind Caddy:** Wiki is static HTML served by Caddy. No server-side processing, no database.
-6. **Key-only SSH:** Password authentication disabled. Per-host admin usernames prevent terminal confusion.
-7. **Firewalld:** Every host runs firewalld -- default deny incoming, allow SSH + WireGuard only.
-8. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
-9. **Shared SSH keys:** The ansible user's authorized_keys are copied to git and restic users. No separate keys -- if the ansible key is compromised, everything else is too. Separate keys add complexity without adding security.
+4. **SecPlatform behind Caddy:** All SecPlatform services bind to WireGuard IP (10.66.0.5). Caddy on rammstein provides TLS + public access via app.i.ar, app-bo.i.ar, auth.i.ar.
+5. **Radicale behind Caddy:** Radicale binds to localhost only. Caddy provides TLS + public access via caldav.randazzo.ar. Basic auth protects the CalDAV endpoint.
+6. **Wiki behind Caddy:** Wiki is static HTML served by Caddy. No server-side processing, no database.
+7. **Key-only SSH:** Password authentication disabled. Per-host admin usernames prevent terminal confusion.
+8. **Firewalld:** Every host runs firewalld -- default deny incoming, allow SSH + WireGuard only.
+9. **Least privilege:** Ansible connects as per-host admin user, escalates to root only per-play via `become: true`.
+10. **Shared SSH keys:** The ansible user's authorized_keys are copied to git and restic users. No separate keys -- if the ansible key is compromised, everything else is too. Separate keys add complexity without adding security.
 
 ## Known Limitations
 
@@ -117,3 +126,4 @@
 2. **Single hub (rammstein):** If the hub goes down, the WireGuard mesh breaks. Spokes can still reach each other if they have direct routes, but the hub-and-spoke topology means they only see the hub as a peer.
 3. **Silverblue package lag:** yoga can't install new packages via Ansible without a reboot (rpm-ostree atomic updates). pass role requires reboot to take effect.
 4. **Restic SSH authorization:** The restic role copies ansible user's authorized_keys to the restic user on rammstein. If the ansible user's keys change, the restic role must be re-run.
+5. **SecPlatform MVP:** No email, no MFA, no CI/CD. Users created manually in Keycloak admin.

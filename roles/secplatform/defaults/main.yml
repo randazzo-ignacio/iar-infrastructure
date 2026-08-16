@@ -1,0 +1,30 @@
+---
+# roles/secplatform/defaults/main.yml
+
+# Enable flag -- opt-in, fail closed.
+secplatform_enabled: false
+
+# Repo to clone. Uses the git mirror on sophon (bare repo).
+# The Ansible control node clones from here, or we clone directly on the host.
+secplatform_repo_url: ""
+secplatform_repo_branch: "main"
+
+# Deploy directory on the target host.
+secplatform_deploy_dir: ""
+
+# Environment to deploy (prod, dev, local).
+secplatform_env: "prod"
+
+# Compose project name (namespaces containers and volumes).
+secplatform_compose_project: "sp-{{ secplatform_env }}"
+
+# User that owns the deploy directory and runs podman compose.
+# Defaults to ansible_user -- set explicitly in host_vars if needed.
+secplatform_user: "{{ ansible_user }}"
+
+# Podman compose binary. podman v4+ includes compose subcommand.
+secplatform_compose_cmd: "podman compose"
+
+# Whether to force a rebuild of images on every Ansible run.
+# Set to false for faster runs when images are already built.
+secplatform_rebuild: false

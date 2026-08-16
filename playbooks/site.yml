@@ -141,6 +141,14 @@
       when: tool_static_page_enabled | default(false) | bool
       tags: [static-site]
 
+- name: SecPlatform (podman compose)
+  hosts: secplatform_hosts
+  become: true
+  roles:
+    - role: secplatform
+      when: secplatform_enabled | default(false) | bool
+      tags: [secplatform]
+
 - name: i.ar Agent Infrastructure
   hosts: all
   become: true

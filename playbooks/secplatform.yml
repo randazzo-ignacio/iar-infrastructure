@@ -1,0 +1,13 @@
+---
+# playbooks/secplatform.yml — Deploy SecPlatform via podman compose.
+# Usage: ansible-playbook playbooks/secplatform.yml --ask-vault-pass
+#
+# Prerequisites: podman role must have been run on the target host.
+
+- name: Deploy SecPlatform
+  hosts: secplatform_hosts
+  become: true
+  roles:
+    - role: secplatform
+      when: secplatform_enabled | default(false) | bool
+      tags: [secplatform]
