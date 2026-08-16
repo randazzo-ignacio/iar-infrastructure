@@ -20,20 +20,18 @@ secplatform_compose_project: "sp-{{ secplatform_env }}"
 # User that owns the deploy directory and runs podman compose.
 secplatform_user: "{{ ansible_user }}"
 
-# Podman compose binary. podman v4+ includes compose subcommand.
-secplatform_compose_cmd: "podman compose"
-
 # Whether to force a rebuild of images on every Ansible run.
 secplatform_rebuild: false
 
+# -- docker-compose v2 (Go binary) --
+# podman-compose (Python) doesn't support depends_on with
+# condition: service_healthy. docker-compose v2 does, and
+# podman compose will use it as the provider if found in PATH.
+secplatform_compose_version: "2.5.1"
+
 # -- .env configuration (replaces setup.sh) --
-# Host IP for .env (not critical for prod -- URLs are hardcoded in compose overrides).
 secplatform_host_ip: "127.0.0.1"
-
-# UID:GID for podman volume ownership.
 secplatform_uid_gid: "1000:1000"
-
-# Tenant passwords (override in vault for production).
 secplatform_tenant_acme_password: "acme-tenant-poc-secret"
 secplatform_tenant_globex_password: "globex-tenant-poc-secret"
 

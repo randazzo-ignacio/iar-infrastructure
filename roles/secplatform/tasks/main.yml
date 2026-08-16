@@ -4,6 +4,7 @@
 # Prerequisites: podman role must run first (installs podman).
 #
 # This role clones the repo, creates .env + tenant directories,
+# installs docker-compose v2 (for proper depends_on + healthcheck support),
 # and starts the stack as a systemd service.
 
 # -- Validate required variables --
@@ -16,6 +17,29 @@
   fail:
     msg: "secplatform_deploy_dir must be set in host_vars"
   when: secplatform_deploy_dir | length == 0
+
+# -- Install docker-compose v2 (Go binary) --
+# podman compose falls back to podman-compose (Python) which doesn't
+# support depends_on with condition: service_healthy. docker-compose v2
+# handles this correctly and podman compose will use it if found in PATH.
+- name: Check if docker-compose v2 is installed
+  command: "docker-compose version --short"
+  register: dc_check
+  changed_when: false
+  failed_when: false
+
+- name: Install docker-compose v2
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/v{{ secplatform_compose_version }}/docker-compose-linux-{{ ansible_architecture }}"
+    dest: "/usr/local/bin/docker-compose"
+    mode: '0755'
+    owner: root
+    group: root
+  when: dc_check.rc != 0
+
+- name: Verify docker-compose v2 is working
+  command: "docker-compose version --short"
+  changed_when: false
 
 # -- Clone or update the repo --
 - name: Ensure deploy directory parent exists
@@ -105,6 +129,8 @@
   become_user: "{{ secplatform_user }}"
 
 # -- Create systemd service --
+# Uses docker-compose v2 (not podman-compose) for proper healthcheck dependency support.
+# podman compose will find docker-compose in PATH and use it as the provider.
 - name: Deploy SecPlatform systemd service
   copy:
     dest: "/etc/systemd/system/secplatform-{{ secplatform_env }}.service"
@@ -119,8 +145,8 @@
       RemainAfterExit=yes
       WorkingDirectory={{ secplatform_deploy_dir }}
       Environment=COMPOSE_PROJECT_NAME={{ secplatform_compose_project }}
-      ExecStart={{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d
-      ExecStop={{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml down
+      ExecStart=/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d
+      ExecStop=/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml down
 
       [Install]
       WantedBy=multi-user.target
@@ -138,7 +164,7 @@
 
 # -- Rebuild images if requested --
 - name: Rebuild SecPlatform images
-  command: "{{ secplatform_compose_cmd }} -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d --build"
+  command: "/usr/bin/podman compose -f docker-compose.yml -f compose/ports.{{ secplatform_env }}.yml -f compose/env.{{ secplatform_env }}.yml up -d --build"
   args:
     chdir: "{{ secplatform_deploy_dir }}"
   environment:
