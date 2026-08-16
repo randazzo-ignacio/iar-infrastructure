@@ -90,12 +90,12 @@
       UID_GID={{ secplatform_uid_gid | default('1000:1000') }}
       TENANT_ACME_DB_PASSWORD={{ secplatform_tenant_acme_password | default('acme-tenant-poc-secret') }}
       TENANT_GLOBEX_DB_PASSWORD={{ secplatform_tenant_globex_password | default('globex-tenant-poc-secret') }}
+      AGENT_RUNNER_SECRET={{ secplatform_agent_runner_secret }}
     owner: "{{ secplatform_user }}"
     group: "{{ secplatform_user }}"
     mode: '0644'
   become: true
   become_user: "{{ secplatform_user }}"
-  when: not secplatform_env_file.stat.exists
 
 # -- Create tenant directories (replaces setup.sh) --
 - name: Create tenant directories
