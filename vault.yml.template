@@ -49,3 +49,8 @@ frigate_camera_rtsp_password: "CAMERA_PASSWORD_HERE"
 # Bot token from @BotFather, chat ID from @userinfobot
 iar_telegram_bot_token: "BOT_TOKEN_HERE"
 iar_telegram_chat_id: "CHAT_ID_HERE"
+# ── SecPlatform Agent Runner secret ───────────────────────
+# Shared secret for BFF -> agent-runner authentication.
+# Generate with: openssl rand -hex 32
+# Set in compose env (AGENT_RUNNER_SECRET) and agent-runner systemd service.
+vault_agent_runner_secret: "AGENT_RUNNER_SECRET_HERE"

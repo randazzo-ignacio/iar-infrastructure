@@ -5,3 +5,8 @@
   service:
     name: "secplatform-{{ secplatform_env }}"
     state: restarted
+
+- name: restart agent-runner
+  service:
+    name: agent-runner
+    state: restarted

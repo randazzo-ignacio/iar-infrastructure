@@ -24,9 +24,6 @@ secplatform_user: "{{ ansible_user }}"
 secplatform_rebuild: false
 
 # -- docker-compose v2 (Go binary) --
-# podman-compose (Python) doesn't support depends_on with
-# condition: service_healthy. docker-compose v2 does, and
-# podman compose will use it as the provider if found in PATH.
 secplatform_compose_version: "2.5.1"
 
 # -- .env configuration (replaces setup.sh) --
@@ -43,3 +40,11 @@ secplatform_tenants:
 # Postgres init scripts to chmod +x.
 secplatform_pg_init_scripts:
   - 01-create-databases.sh
+
+# -- Agent Runner --
+# Host-side service that bridges BFF and iar.sh one-shot agents.
+secplatform_agent_runner_enabled: false
+secplatform_agent_runner_port: 4700
+secplatform_agent_runner_secret: ""  # MUST be set in vault
+secplatform_iar_sh_path: "/home/nacho/repos/i.ar/utils/iar.sh"
+secplatform_iar_personalization: "/home/nacho/repos/iar-personalization"

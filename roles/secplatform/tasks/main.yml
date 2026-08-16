@@ -208,3 +208,54 @@
     name: "secplatform-{{ secplatform_env }}"
     state: started
   when: not (secplatform_rebuild | bool)
+# -- Agent Runner --
+# Deploy the host-side agent-runner service (bridges BFF and iar.sh).
+# Runs as a systemd service, not containerized. Needs podman access for iar.sh.
+
+- name: Deploy agent-runner script
+  copy:
+    src: "{{ secplatform_deploy_dir }}/agent-runner/agent-runner.py"
+    dest: "/opt/secplatform/agent-runner.py"
+    owner: "{{ secplatform_user }}"
+    group: "{{ secplatform_user }}"
+    mode: '0755'
+    remote_src: true
+  when: secplatform_agent_runner_enabled | bool
+
+- name: Create agent-runner systemd service
+  copy:
+    dest: "/etc/systemd/system/agent-runner.service"
+    content: |
+      [Unit]
+      Description=SecPlatform Agent Runner
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      ExecStart=/usr/bin/python3 /opt/secplatform/agent-runner.py
+      Environment=AGENT_RUNNER_HOST=10.66.0.5
+      Environment=AGENT_RUNNER_PORT={{ secplatform_agent_runner_port }}
+      Environment=AGENT_RUNNER_SECRET={{ secplatform_agent_runner_secret }}
+      Environment=IAR_SH_PATH={{ secplatform_iar_sh_path }}
+      Environment=IAR_PERSONALIZATION={{ secplatform_iar_personalization }}
+      User={{ secplatform_user }}
+      Group={{ secplatform_user }}
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: '0644'
+  when: secplatform_agent_runner_enabled | bool
+  notify: restart agent-runner
+
+- name: Enable and start agent-runner
+  service:
+    name: agent-runner
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: secplatform_agent_runner_enabled | bool
