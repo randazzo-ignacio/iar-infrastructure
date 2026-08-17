@@ -75,12 +75,7 @@
   register: secplatform_repo_update
 
 # -- Create .env (replaces setup.sh, non-interactive) --
-- name: Check if .env exists
-  stat:
-    path: "{{ secplatform_deploy_dir }}/.env"
-  register: secplatform_env_file
-
-- name: Create .env
+- name: Always regenerate .env (ensures AGENT_RUNNER_SECRET is current)
   copy:
     dest: "{{ secplatform_deploy_dir }}/.env"
     content: |
@@ -108,7 +103,7 @@
   become: true
   become_user: "{{ secplatform_user }}"
   loop: "{{ secplatform_tenants | product(['assets', 'vpns', 'findings', 'evidence', 'secrets', 'audit', 'jobs/queued', 'jobs/claimed', 'jobs/running', 'jobs/completed', 'jobs/failed']) | list }}"
-  when: not secplatform_env_file.stat.exists
+
 
 - name: Create tenant manifest files
   copy:
@@ -120,7 +115,7 @@
   become: true
   become_user: "{{ secplatform_user }}"
   loop: "{{ secplatform_tenants }}"
-  when: not secplatform_env_file.stat.exists
+
 
 # -- Make scripts executable (git may have lost the mode) --
 - name: Ensure scripts are executable
