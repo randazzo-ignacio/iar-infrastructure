@@ -9,8 +9,8 @@ RemainAfterExit=yes
 WorkingDirectory={{ zulip_compose_dir }}
 Environment=COMPOSE_PROJECT_NAME=zulip
 Environment=DOCKER_HOST=unix:///run/podman/podman.sock
-ExecStart=/usr/bin/podman compose -f compose.yml -f compose.override.yml up -d
-ExecStop=/usr/bin/podman compose -f compose.yml -f compose.override.yml down
+ExecStart=/usr/bin/podman compose -f compose.yml up -d
+ExecStop=/usr/bin/podman compose -f compose.yml down
 
 [Install]
 WantedBy=multi-user.target

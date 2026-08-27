@@ -1,7 +1,25 @@
 ---
-# Zulip Docker Compose -- base services
-# Based on official zulip/docker-zulip compose.yaml
+# Zulip Docker Compose -- single file (base + override merged)
+# Based on official zulip/docker-zulip compose.yaml + compose.override.yaml.example
 # Adapted for podman with SELinux :z labels on volumes.
+#
+# NOTE: docker-compose v2.5.1 does not support 'environment' in secrets,
+# 'attach', or 'app_protocol'. Secrets use file: with explicit files
+# (no trailing newlines, written by Ansible with printf).
+
+secrets:
+  zulip__postgres_password:
+    file: ".env-postgres"
+  zulip__memcached_password:
+    file: ".env-memcached"
+  zulip__rabbitmq_password:
+    file: ".env-rabbitmq"
+  zulip__redis_password:
+    file: ".env-redis"
+  zulip__secret_key:
+    file: ".env-secret-key"
+  zulip__email_password:
+    file: ".env-email"
 
 services:
   database:
@@ -84,6 +102,16 @@ services:
       SETTING_MEMCACHED_LOCATION: "memcached:11211"
       SETTING_RABBITMQ_HOST: "rabbitmq"
       SETTING_REDIS_HOST: "redis"
+      SETTING_EXTERNAL_HOST: "{{ zulip_external_host }}"
+      SETTING_ZULIP_ADMINISTRATOR: "{{ zulip_admin_email }}"
+      LOADBALANCER_IPS: "{{ zulip_loadbalancer_ips | default('10.66.0.0/16') }}"
+      SETTING_EMAIL_HOST: ""
+      SETTING_EMAIL_PORT: "25"
+      SETTING_EMAIL_USE_SSL: "False"
+      SETTING_EMAIL_USE_TLS: "False"
+      SETTING_ZULIP_SERVICE_PUSH_NOTIFICATIONS: "False"
+      SETTING_ZULIP_SERVICE_SUBMIT_USAGE_STATISTICS: "False"
+      SETTING_OPEN_REALM_CREATION: "False"
     volumes:
       - "{{ zulip_data_dir }}/zulip:/data:rw,z"
     ulimits:

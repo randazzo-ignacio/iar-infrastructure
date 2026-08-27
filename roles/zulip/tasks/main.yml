@@ -11,7 +11,8 @@
 #
 # NOTE: docker-compose v2.5.1 does not support 'environment' in secrets
 # definitions or 'attach'/'app_protocol' in service definitions.
-# We write secrets to individual files and reference them with 'file:'.
+# We write secrets to individual files (no trailing newline) and reference
+# them with 'file:'. All config is in a single compose.yml (no override file).
 
 # -- Validate required variables --
 - name: Fail if zulip_postgres_password is not set
@@ -74,14 +75,9 @@
     - rabbitmq
     - redis
 
-# -- Write secret files (docker-compose v2.5.1 needs file-based secrets) --
+# -- Write secret files (no trailing newline -- docker secrets must not have one) --
 - name: Write Zulip secret files
-  copy:
-    dest: "{{ zulip_compose_dir }}/.env-{{ item.key }}"
-    content: "{{ item.value }}"
-    owner: root
-    group: root
-    mode: '0600'
+  shell: "printf '%s' '{{ item.value }}' > {{ zulip_compose_dir }}/.env-{{ item.key }} && chmod 600 {{ zulip_compose_dir }}/.env-{{ item.key }}"
   loop:
     - { key: "postgres", value: "{{ zulip_postgres_password }}" }
     - { key: "memcached", value: "{{ zulip_memcached_password }}" }
@@ -92,21 +88,11 @@
   no_log: true
   notify: restart zulip
 
-# -- Deploy compose.yml --
+# -- Deploy compose.yml (single file, all config + secrets) --
 - name: Deploy Zulip compose.yml
   template:
     src: compose.yml.j2
     dest: "{{ zulip_compose_dir }}/compose.yml"
-    owner: root
-    group: root
-    mode: '0644'
-  notify: restart zulip
-
-# -- Deploy compose.override.yml (settings + secrets) --
-- name: Deploy Zulip compose.override.yml
-  template:
-    src: compose.override.yml.j2
-    dest: "{{ zulip_compose_dir }}/compose.override.yml"
     owner: root
     group: root
     mode: '0644'
