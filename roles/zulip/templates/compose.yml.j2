@@ -15,7 +15,6 @@ services:
       POSTGRES_PASSWORD_FILE: /run/secrets/zulip__postgres_password
     volumes:
       - "{{ zulip_data_dir }}/postgresql-14:/var/lib/postgresql/data:rw,z"
-    attach: false
 
   memcached:
     image: "memcached:alpine"
@@ -34,7 +33,6 @@ services:
       SASL_CONF_PATH: "/home/memcache/memcached.conf"
       MEMCACHED_SASL_PWDB: "/home/memcache/memcached-sasl-db"
       MEMCACHED_PASSWORD_FILE: /run/secrets/zulip__memcached_password
-    attach: false
 
   rabbitmq:
     image: "rabbitmq:4.2"
@@ -54,7 +52,6 @@ services:
       RABBITMQ_PASSWORD_FILE: /run/secrets/zulip__rabbitmq_password
     volumes:
       - "{{ zulip_data_dir }}/rabbitmq:/var/lib/rabbitmq:rw,z"
-    attach: false
 
   redis:
     image: "redis:alpine"
@@ -69,7 +66,6 @@ services:
       REDIS_PASSWORD_FILE: /run/secrets/zulip__redis_password
     volumes:
       - "{{ zulip_data_dir }}/redis:/data:rw,z"
-    attach: false
 
   zulip:
     image: "{{ zulip_image }}"
