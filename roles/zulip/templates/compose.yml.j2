@@ -1,38 +1,21 @@
 ---
-# Zulip Docker Compose -- single file (base + override merged)
-# Based on official zulip/docker-zulip compose.yaml + compose.override.yaml.example
-# Adapted for podman with SELinux :z labels on volumes.
-#
-# NOTE: docker-compose v2.5.1 does not support 'environment' in secrets,
-# 'attach', or 'app_protocol'. Secrets use file: with explicit files
-# (no trailing newlines, written by Ansible with printf).
-
-secrets:
-  zulip__postgres_password:
-    file: ".env-postgres"
-  zulip__memcached_password:
-    file: ".env-memcached"
-  zulip__rabbitmq_password:
-    file: ".env-rabbitmq"
-  zulip__redis_password:
-    file: ".env-redis"
-  zulip__secret_key:
-    file: ".env-secret-key"
-  zulip__email_password:
-    file: ".env-email"
+# Zulip Docker Compose -- single file
+# Based on official zulip/docker-zulip compose.yaml
+# Adapted for podman: no docker secrets (podman compatibility), 
+# secret files mounted as volumes instead.
+# SELinux :z labels on all volumes.
 
 services:
   database:
     image: "zulip/zulip-postgresql:14"
     restart: unless-stopped
-    secrets:
-      - zulip__postgres_password
     environment:
       POSTGRES_DB: "zulip"
       POSTGRES_USER: "zulip"
       POSTGRES_PASSWORD_FILE: /run/secrets/zulip__postgres_password
     volumes:
       - "{{ zulip_data_dir }}/postgresql-14:/var/lib/postgresql/data:rw,z"
+      - "./.env-postgres:/run/secrets/zulip__postgres_password:ro,z"
 
   memcached:
     image: "memcached:alpine"
@@ -45,12 +28,12 @@ services:
         echo "zulip@$$HOSTNAME:$$(cat $$MEMCACHED_PASSWORD_FILE)" > "$$MEMCACHED_SASL_PWDB"
         echo "zulip@localhost:$$(cat $$MEMCACHED_PASSWORD_FILE)" >> "$$MEMCACHED_SASL_PWDB"
         exec memcached -S
-    secrets:
-      - zulip__memcached_password
     environment:
       SASL_CONF_PATH: "/home/memcache/memcached.conf"
       MEMCACHED_SASL_PWDB: "/home/memcache/memcached-sasl-db"
       MEMCACHED_PASSWORD_FILE: /run/secrets/zulip__memcached_password
+    volumes:
+      - "./.env-memcached:/run/secrets/zulip__memcached_password:ro,z"
 
   rabbitmq:
     image: "rabbitmq:4.2"
@@ -63,13 +46,12 @@ services:
         echo 'default_user = $$(RABBITMQ_DEFAULT_USER)' >> /etc/rabbitmq/rabbitmq.conf
         echo 'default_pass = $$(RABBITMQ_DEFAULT_PASS)' >> /etc/rabbitmq/rabbitmq.conf
         exec docker-entrypoint.sh rabbitmq-server
-    secrets:
-      - zulip__rabbitmq_password
     environment:
       RABBITMQ_DEFAULT_USER: "zulip"
       RABBITMQ_PASSWORD_FILE: /run/secrets/zulip__rabbitmq_password
     volumes:
       - "{{ zulip_data_dir }}/rabbitmq:/var/lib/rabbitmq:rw,z"
+      - "./.env-rabbitmq:/run/secrets/zulip__rabbitmq_password:ro,z"
 
   redis:
     image: "redis:alpine"
@@ -78,25 +60,17 @@ services:
       - "sh"
       - "-euc"
       - '/usr/local/bin/docker-entrypoint.sh --requirepass "$$(cat $$REDIS_PASSWORD_FILE)"'
-    secrets:
-      - zulip__redis_password
     environment:
       REDIS_PASSWORD_FILE: /run/secrets/zulip__redis_password
     volumes:
       - "{{ zulip_data_dir }}/redis:/data:rw,z"
+      - "./.env-redis:/run/secrets/zulip__redis_password:ro,z"
 
   zulip:
     image: "{{ zulip_image }}"
     restart: unless-stopped
     ports:
       - "{{ zulip_http_port }}:80"
-    secrets:
-      - zulip__postgres_password
-      - zulip__memcached_password
-      - zulip__rabbitmq_password
-      - zulip__redis_password
-      - zulip__secret_key
-      - zulip__email_password
     environment:
       SETTING_REMOTE_POSTGRES_HOST: "database"
       SETTING_MEMCACHED_LOCATION: "memcached:11211"
@@ -114,6 +88,12 @@ services:
       SETTING_OPEN_REALM_CREATION: "False"
     volumes:
       - "{{ zulip_data_dir }}/zulip:/data:rw,z"
+      - "./.env-postgres:/run/secrets/zulip__postgres_password:ro,z"
+      - "./.env-memcached:/run/secrets/zulip__memcached_password:ro,z"
+      - "./.env-rabbitmq:/run/secrets/zulip__rabbitmq_password:ro,z"
+      - "./.env-redis:/run/secrets/zulip__redis_password:ro,z"
+      - "./.env-secret-key:/run/secrets/zulip__secret_key:ro,z"
+      - "./.env-email:/run/secrets/zulip__email_password:ro,z"
     ulimits:
       nofile:
         soft: 1000000
