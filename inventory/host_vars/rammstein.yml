@@ -32,6 +32,11 @@ caddy_sites:
   - domain: "auth.i.ar"
     type: proxy
     backend_host: sophon
+    backend_port: 8080
+  # Zulip (sophon via WireGuard)
+  - domain: "agora.randazzo.ar"
+    type: proxy
+    backend_host: sophon
     backend_port: 8090
 
 # Static sites -- both deployed by static-site role
@@ -43,8 +48,3 @@ tool_static_page_enabled: true
 # Git bare repos -- mirror to sophon
 git_mirror_target: "git@10.66.0.5:/home/git/repos"
 git_mirror_host: sophon
-  # Zulip (sophon via WireGuard)
-  - domain: "agora.randazzo.ar"
-    type: proxy
-    backend_host: sophon
-    backend_port: 8090
