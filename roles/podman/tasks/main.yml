@@ -1,7 +1,7 @@
 ---
 # roles/podman/tasks/main.yml
 # Installs Podman on all hosts. EPEL required for non-Fedora RHEL family.
-# On Silverblue (manage_packages: false), podman is pre-installed -- skip dnf.
+# manage_packages: false can be set per-host for non-dnf systems.
 
 - name: Install EPEL (non-Fedora only)
   dnf:

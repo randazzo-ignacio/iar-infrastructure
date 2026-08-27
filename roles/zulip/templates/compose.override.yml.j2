@@ -1,0 +1,44 @@
+---
+# Zulip compose.override.yml -- settings and secrets configuration
+# This file provides the environment-specific settings for our deployment.
+
+secrets:
+  zulip__postgres_password:
+    environment: "ZULIP__POSTGRES_PASSWORD"
+  zulip__memcached_password:
+    environment: "ZULIP__MEMCACHED_PASSWORD"
+  zulip__rabbitmq_password:
+    environment: "ZULIP__RABBITMQ_PASSWORD"
+  zulip__redis_password:
+    environment: "ZULIP__REDIS_PASSWORD"
+  zulip__secret_key:
+    environment: "ZULIP__SECRET_KEY"
+  zulip__email_password:
+    environment: "ZULIP__EMAIL_PASSWORD"
+
+services:
+  zulip:
+    environment:
+      # Required: external hostname and admin email
+      SETTING_EXTERNAL_HOST: "{{ zulip_external_host }}"
+      SETTING_ZULIP_ADMINISTRATOR: "{{ zulip_admin_email }}"
+
+      # SSL termination is done by Caddy (reverse proxy), not Zulip.
+      # Trust the WireGuard gateway IP (sophon's perspective: rammstein is the gateway)
+      LOADBALANCER_IPS: "{{ zulip_loadbalancer_ips | default('10.66.0.0/16') }}"
+
+      # Disable outgoing email (MVP -- no mailer configured)
+      SETTING_EMAIL_HOST: ""
+      SETTING_EMAIL_PORT: "25"
+      SETTING_EMAIL_USE_SSL: "False"
+      SETTING_EMAIL_USE_TLS: "False"
+
+      # Authentication: EmailAuthBackend (default). Can add more later.
+      # ZULIP_AUTH_BACKENDS: "EmailAuthBackend"
+
+      # Disable push notifications service (self-hosted, no mobile push)
+      SETTING_ZULIP_SERVICE_PUSH_NOTIFICATIONS: "False"
+      SETTING_ZULIP_SERVICE_SUBMIT_USAGE_STATISTICS: "False"
+
+      # Allow open registration? No -- we create accounts manually for agents
+      SETTING_OPEN_REALM_CREATION: "False"

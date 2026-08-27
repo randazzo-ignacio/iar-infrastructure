@@ -1,0 +1,26 @@
+---
+# playbooks/zulip.yml -- Deploy Zulip chat server
+# Usage: ansible-playbook playbooks/zulip.yml --ask-vault-pass
+#
+# Deploys Zulip on sophon (10.66.0.5) via podman compose.
+# Caddy on rammstein terminates TLS and reverse-proxies to sophon:8090.
+#
+# Prerequisites:
+#   - podman role must have run on sophon
+#   - caddy role must have run on rammstein (with agora.randazzo.ar site added)
+#   - vault must contain zulip_*_password and zulip_secret_key
+
+- name: Zulip chat server (sophon)
+  hosts: sophon
+  become: true
+  roles:
+    - role: zulip
+      when: zulip_enabled | default(false) | bool
+      tags: [zulip]
+
+- name: Update Caddy reverse proxy (rammstein)
+  hosts: rammstein
+  become: true
+  roles:
+    - role: caddy
+      tags: [caddy]

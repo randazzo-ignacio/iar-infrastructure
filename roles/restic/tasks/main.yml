@@ -1,12 +1,13 @@
 ---
 # roles/restic/tasks/main.yml
-# Sets up restic backup with dual targets (primary + remote on rammstein).
+# Sets up restic backup with multiple targets.
 #
 # Architecture:
-#   yoga   -> primary: sftp to sophon (local network, fast)
-#           -> remote:  sftp to rammstein (offsite)
+#   yoga   -> local:   external drive at /mnt/backups
+#          -> primary: sftp to sophon (RAID1, over WireGuard)
+#          -> remote:  sftp to rammstein (offsite VPS)
 #   sophon -> primary: local disk (/home/restic/backups)
-#           -> remote:  sftp to rammstein (offsite)
+#          -> remote:  sftp to rammstein (offsite)
 #   rammstein -> SFTP target only (no local backups)
 #
 # SSH access: the ansible user's authorized_keys are copied to the restic
@@ -18,7 +19,7 @@
 # the shell BE the SFTP server, no ForceCommand is needed and no
 # domain transition occurs.
 #
-# The systemd service backs up to BOTH targets in one run.
+# The systemd service backs up to ALL targets in one run.
 # A weekly check verifies repository integrity.
 # Retention policy prunes old snapshots after each backup.
 
@@ -27,7 +28,69 @@
   dnf:
     name: restic
     state: present
-  when: manage_packages | default(true) | bool
+
+# ============================================================
+# LOCAL DRIVE SETUP (yoga -- optional external drive)
+# ============================================================
+
+- name: Ensure local backup mountpoint exists
+  file:
+    path: "{{ restic_local_mountpoint }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
+
+- name: Format local backup drive (first run only)
+  command: "mkfs.ext4 -L backups {{ restic_local_device }}"
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
+    - restic_format_local_drive | default(false) | bool
+
+- name: Get UUID of local backup drive
+  command: "blkid -s UUID -o value {{ restic_local_device }}"
+  register: local_drive_uuid
+  changed_when: false
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
+
+- name: Mount local backup drive via fstab
+  mount:
+    path: "{{ restic_local_mountpoint }}"
+    src: "UUID={{ local_drive_uuid.stdout }}"
+    fstype: ext4
+    opts: defaults,noatime
+    state: mounted
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
+
+- name: Ensure restic directory exists on local drive
+  file:
+    path: "{{ restic_local_mountpoint }}/restic"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0700'
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
+
+- name: Initialize restic repo on local drive
+  command: "{{ restic_binary }} --repo {{ restic_local_repo }} init"
+  args:
+    creates: "{{ restic_local_mountpoint }}/restic/config"
+  environment:
+    RESTIC_PASSWORD: "{{ restic_password }}"
+  become_user: "{{ ansible_user }}"
+  when:
+    - restic_local_repo is defined
+    - restic_local_repo | length > 0
 
 # ============================================================
 # CLIENT-SIDE SETUP (yoga, sophon -- hosts that run backups)

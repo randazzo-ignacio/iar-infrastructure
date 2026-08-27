@@ -1,0 +1,36 @@
+---
+# roles/zulip/defaults/main.yml
+
+# Enable flag -- opt-in, fail closed.
+zulip_enabled: false
+
+# Zulip Docker image version
+zulip_image: "ghcr.io/zulip/zulip-server:12.2-0"
+
+# External hostname (domain users type in browser)
+zulip_external_host: "agora.randazzo.ar"
+
+# Admin email (used for Let's Encrypt and admin account)
+zulip_admin_email: "admin@randazzo.ar"
+
+# Compose directory on the target host
+zulip_compose_dir: "/opt/zulip"
+
+# Data directory for persistent volumes
+zulip_data_dir: "/var/lib/zulip"
+
+# Port Zulip listens on (HTTP only -- Caddy terminates TLS)
+zulip_http_port: 8090
+
+# -- Secrets (MUST be set in vault) --
+zulip_postgres_password: ""
+zulip_memcached_password: ""
+zulip_rabbitmq_password: ""
+zulip_redis_password: ""
+zulip_secret_key: ""
+zulip_email_password: ""
+
+# -- Bot/API settings --
+# Whether to create bot accounts via the API after first deploy
+zulip_create_bots: false
+zulip_bot_api_key: ""  # set in vault if managing bots externally

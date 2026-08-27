@@ -156,3 +156,10 @@
     - role: iar-agent
       when: iar_agents_enabled | default(false) | bool
       tags: [iar-agent]
+- name: Zulip chat server (sophon)
+  hosts: sophon
+  become: true
+  roles:
+    - role: zulip
+      when: zulip_enabled | default(false) | bool
+      tags: [zulip]

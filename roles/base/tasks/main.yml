@@ -1,7 +1,7 @@
 ---
 # roles/base/tasks/main.yml
 # Applied to every host -- hardening, packages, SSH, firewall, sysctl.
-# Yoga (Fedora Silverblue) excludes package management via manage_packages: false.
+# manage_packages: false can be set per-host for non-dnf systems.
 
 # -- System update --
 - name: Update all packages

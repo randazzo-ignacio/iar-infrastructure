@@ -2,16 +2,24 @@
 # roles/restic/defaults/main.yml
 #
 # Restic backup architecture:
-#   yoga  -> primary: sftp to sophon (local network, fast)
-#         -> remote:  sftp to rammstein (offsite)
+#   yoga  -> local:   external drive at /mnt/backups
+#         -> primary: sftp to sophon (RAID1, over WireGuard)
+#         -> remote:  sftp to rammstein (offsite VPS)
 #   sophon -> primary: local disk (/home/restic/backups)
 #          -> remote:  sftp to rammstein (offsite)
 #   rammstein -> SFTP target only (no local backups)
 #
-# Both targets are backed up in a single systemd service run.
+# All targets are backed up in a single systemd service run.
+
+# -- Local repository (optional, per-host) --
+# When set, an additional local restic repo is used (e.g. external drive).
+# restic_local_repo: "/mnt/backups"
+# restic_local_device: "/dev/sda1"
+# restic_local_mountpoint: "/mnt/backups"
+# restic_format_local_drive: false  # set true on first run only
 
 # -- Repository paths --
-# Primary (local/fast target). Set per-host in host_vars.
+# Primary (fast network target). Set per-host in host_vars.
 # On sophon: "/home/restic/backups" (local disk)
 # On yoga:   "sftp:restic@10.66.0.5:/home/restic/backups" (sophon over WG)
 restic_primary_repo: ""

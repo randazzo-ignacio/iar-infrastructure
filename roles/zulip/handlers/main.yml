@@ -1,0 +1,7 @@
+---
+# roles/zulip/handlers/main.yml
+
+- name: restart zulip
+  service:
+    name: zulip-stack
+    state: restarted

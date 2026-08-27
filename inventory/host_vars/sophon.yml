@@ -89,3 +89,10 @@ secplatform_rebuild: true
 secplatform_agent_runner_enabled: true
 secplatform_agent_runner_port: 4700
 secplatform_agent_runner_secret: "{{ vault_agent_runner_secret }}"
+# Zulip chat server (agora.randazzo.ar)
+zulip_enabled: true
+zulip_external_host: "agora.randazzo.ar"
+zulip_admin_email: "admin@randazzo.ar"
+zulip_compose_dir: "/opt/zulip"
+zulip_data_dir: "/var/lib/zulip"
+zulip_http_port: 8090

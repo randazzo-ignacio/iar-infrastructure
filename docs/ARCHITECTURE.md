@@ -24,7 +24,8 @@
 │  Caddy proxy: auth.i.ar -> sophon:8080 (Keycloak)                   │  │
 │  Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)           │  │
 │  Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)        │  │
-│  Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build               │  │
+│  Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build               │
+│  Caddy proxy: agora.randazzo.ar -> sophon:8090 (Zulip)             │  │
 │  Radicale CalDAV server (localhost:5232)                             │  │
 │  Wiki build (ruby + pandoc + pagefind, post-receive hook)            │  │
 │  Git bare repos (auto-discovered, mirrors to sophon)                │  │
@@ -56,7 +57,7 @@
 |------|-------|--------|------|----------|
 | rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, app.i.ar (proxy), app-bo.i.ar (proxy), auth.i.ar (proxy), camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy), wiki.randazzo.ar (static) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV, wiki build | VPS 2c/4GB, Fedora 44 |
 | yoga | 10.66.0.4 | (none) | Laptop (Silverblue), pass client, restic backup client | Intel Core Ultra |
-| sophon | 10.66.0.5 | (none, proxied via rammstein) | Ollama GPU, Frigate NVR, SecPlatform, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
+| sophon | 10.66.0.5 | (none, proxied via rammstein) | Ollama GPU, Frigate NVR, SecPlatform, Zulip, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
 
 ## Inventory Groups
 
@@ -87,6 +88,7 @@
 - Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build (wiki)
 - Radicale CalDAV server (localhost only, Caddy provides TLS + public access)
 - Wiki build pipeline (ruby + kramdown + pandoc + pagefind, auto-build on push)
+- Caddy proxy: agora.randazzo.ar -> sophon:8090 (Zulip chat)
 - WireGuard hub -- all inter-server traffic routes through here
 - Git bare repos (auto-discovered from ~/repos/ on yoga, auto-mirror to sophon)
 - Restic remote target (restic user, SFTP access, /home/restic/backups)
@@ -103,6 +105,7 @@
 - Frigate NVR with NVIDIA TensorRT (8 cameras)
 - SecPlatform (multi-tenant SaaS via podman compose, proxied via rammstein)
 - i.ar agent infrastructure (librarian agent)
+- Zulip chat server (podman compose, proxied via rammstein)
 - Git bare repo mirror (auto-mirror from rammstein)
 - Restic local target (/home/restic/backups, fast local backup for yoga)
 - WireGuard spoke
@@ -127,3 +130,15 @@
 3. **Silverblue package lag:** yoga can't install new packages via Ansible without a reboot (rpm-ostree atomic updates). pass role requires reboot to take effect.
 4. **Restic SSH authorization:** The restic role copies ansible user's authorized_keys to the restic user on rammstein. If the ansible user's keys change, the restic role must be re-run.
 5. **SecPlatform MVP:** No email, no MFA, no CI/CD. Users created manually in Keycloak admin.
+## Zulip (agora.randazzo.ar)
+
+Self-hosted Zulip chat server for the AI research laboratory project. Deployed on sophon via podman compose (same pattern as SecPlatform). Caddy on rammstein terminates TLS and reverse-proxies to sophon:8090.
+
+- **Domain:** agora.randazzo.ar
+- **Backend:** sophon:8090 (Zulip HTTP, no TLS -- Caddy handles TLS)
+- **Stack:** Zulip server + PostgreSQL + Memcached + RabbitMQ + Redis (5 containers)
+- **Image:** ghcr.io/zulip/zulip-server:12.2-0
+- **Deployment:** `ansible-playbook playbooks/zulip.yml --ask-vault-pass`
+- **Secrets:** All passwords in vault (zulip_postgres_password, zulip_memcached_password, zulip_rabbitmq_password, zulip_redis_password, zulip_secret_key)
+- **No email:** Outgoing email disabled (MVP). User accounts created manually via admin panel.
+- **No open registration:** SETTING_OPEN_REALM_CREATION: False. Accounts created by admin.

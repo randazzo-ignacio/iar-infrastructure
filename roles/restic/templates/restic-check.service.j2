@@ -2,9 +2,18 @@
 Description=Restic repository integrity check
 After=network-online.target
 Wants=network-online.target
+{% if restic_local_repo is defined and restic_local_repo | length > 0 %}
+After=mnt-backups.mount
+Wants=mnt-backups.mount
+{% endif %}
 
 [Service]
 Type=oneshot
 Environment=RESTIC_PASSWORD_FILE={{ restic_password_file }}
-ExecStart=/bin/sh -c '{{ restic_binary }} --repo {{ restic_primary_repo }} check 2>/dev/null || true'
-ExecStartPost=/bin/sh -c '{{ restic_binary }} --repo {{ restic_remote_repo }} check 2>/dev/null || true'
+
+ExecStart=/bin/sh -c '\
+{% if restic_local_repo is defined and restic_local_repo | length > 0 %}
+{{ restic_binary }} --repo {{ restic_local_repo }} check 2>/dev/null || true && \
+{% endif %}
+{{ restic_binary }} --repo {{ restic_primary_repo }} check 2>/dev/null || true && \
+{{ restic_binary }} --repo {{ restic_remote_repo }} check 2>/dev/null || true'

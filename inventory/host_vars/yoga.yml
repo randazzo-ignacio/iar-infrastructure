@@ -2,13 +2,17 @@ ansible_user: nacho
 wg_ip: "10.66.0.4"
 # No wg_endpoint -- spoke, no public endpoint
 
-# Fedora Silverblue uses rpm-ostree, not dnf
-manage_packages: false
-
 # Restic backup
+# Three targets: local external drive, sophon (RAID1), rammstein (offsite)
+restic_local_repo: "/mnt/backups/restic"
+restic_local_device: "/dev/sda1"
+restic_local_mountpoint: "/mnt/backups"
+# Set to true on first run to format the drive, then back to false
+restic_format_local_drive: false
+
 restic_primary_repo: "sftp:restic@10.66.0.5:/home/restic/backups"
 restic_backup_paths:
-  - /home/nacho/Documents
   - /home/nacho/repos
+  - /home/nacho/data
   - /home/nacho/.config
   - /home/nacho/.ssh

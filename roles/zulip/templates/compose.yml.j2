@@ -1,0 +1,104 @@
+---
+# Zulip Docker Compose -- base services
+# Based on official zulip/docker-zulip compose.yaml
+# Adapted for podman with SELinux :z labels on volumes.
+
+services:
+  database:
+    image: "zulip/zulip-postgresql:14"
+    restart: unless-stopped
+    secrets:
+      - zulip__postgres_password
+    environment:
+      POSTGRES_DB: "zulip"
+      POSTGRES_USER: "zulip"
+      POSTGRES_PASSWORD_FILE: /run/secrets/zulip__postgres_password
+    volumes:
+      - "{{ zulip_data_dir }}/postgresql-14:/var/lib/postgresql/data:rw,z"
+    attach: false
+
+  memcached:
+    image: "memcached:alpine"
+    restart: unless-stopped
+    command:
+      - "sh"
+      - "-euc"
+      - |
+        echo 'mech_list: plain' > "$$SASL_CONF_PATH"
+        echo "zulip@$$HOSTNAME:$$(cat $$MEMCACHED_PASSWORD_FILE)" > "$$MEMCACHED_SASL_PWDB"
+        echo "zulip@localhost:$$(cat $$MEMCACHED_PASSWORD_FILE)" >> "$$MEMCACHED_SASL_PWDB"
+        exec memcached -S
+    secrets:
+      - zulip__memcached_password
+    environment:
+      SASL_CONF_PATH: "/home/memcache/memcached.conf"
+      MEMCACHED_SASL_PWDB: "/home/memcache/memcached-sasl-db"
+      MEMCACHED_PASSWORD_FILE: /run/secrets/zulip__memcached_password
+    attach: false
+
+  rabbitmq:
+    image: "rabbitmq:4.2"
+    restart: unless-stopped
+    command:
+      - "sh"
+      - "-euc"
+      - |
+        export RABBITMQ_DEFAULT_PASS="$$(cat $$RABBITMQ_PASSWORD_FILE)"
+        echo 'default_user = $$(RABBITMQ_DEFAULT_USER)' >> /etc/rabbitmq/rabbitmq.conf
+        echo 'default_pass = $$(RABBITMQ_DEFAULT_PASS)' >> /etc/rabbitmq/rabbitmq.conf
+        exec docker-entrypoint.sh rabbitmq-server
+    secrets:
+      - zulip__rabbitmq_password
+    environment:
+      RABBITMQ_DEFAULT_USER: "zulip"
+      RABBITMQ_PASSWORD_FILE: /run/secrets/zulip__rabbitmq_password
+    volumes:
+      - "{{ zulip_data_dir }}/rabbitmq:/var/lib/rabbitmq:rw,z"
+    attach: false
+
+  redis:
+    image: "redis:alpine"
+    restart: unless-stopped
+    command:
+      - "sh"
+      - "-euc"
+      - '/usr/local/bin/docker-entrypoint.sh --requirepass "$$(cat $$REDIS_PASSWORD_FILE)"'
+    secrets:
+      - zulip__redis_password
+    environment:
+      REDIS_PASSWORD_FILE: /run/secrets/zulip__redis_password
+    volumes:
+      - "{{ zulip_data_dir }}/redis:/data:rw,z"
+    attach: false
+
+  zulip:
+    image: "{{ zulip_image }}"
+    restart: unless-stopped
+    ports:
+      - name: http
+        target: 80
+        published: {{ zulip_http_port }}
+        app_protocol: http
+    secrets:
+      - zulip__postgres_password
+      - zulip__memcached_password
+      - zulip__rabbitmq_password
+      - zulip__redis_password
+      - zulip__secret_key
+      - zulip__email_password
+    environment:
+      SETTING_REMOTE_POSTGRES_HOST: "database"
+      SETTING_MEMCACHED_LOCATION: "memcached:11211"
+      SETTING_RABBITMQ_HOST: "rabbitmq"
+      SETTING_REDIS_HOST: "redis"
+    volumes:
+      - "{{ zulip_data_dir }}/zulip:/data:rw,z"
+    ulimits:
+      nofile:
+        soft: 1000000
+        hard: 1048576
+    depends_on:
+      - database
+      - memcached
+      - rabbitmq
+      - redis

@@ -1,0 +1,136 @@
+---
+# roles/zulip/tasks/main.yml
+# Deploys Zulip (self-hosted chat) via Podman Compose on sophon.
+# Caddy on rammstein terminates TLS and reverse-proxies over WireGuard.
+#
+# Zulip needs: PostgreSQL, Memcached, RabbitMQ, Redis, and the Zulip server.
+# The official Docker image bundles all of these as separate compose services.
+#
+# We use podman compose (docker-compose v2 as provider) following the same
+# pattern as SecPlatform: system podman socket, SELinux :z labels on volumes.
+
+# -- Validate required variables --
+- name: Fail if zulip_postgres_password is not set
+  fail:
+    msg: "zulip_postgres_password must be set in vault"
+  when: zulip_postgres_password | length == 0
+
+- name: Fail if zulip_secret_key is not set
+  fail:
+    msg: "zulip_secret_key must be set in vault"
+  when: zulip_secret_key | length == 0
+
+- name: Fail if zulip_external_host is not set
+  fail:
+    msg: "zulip_external_host must be set in host_vars"
+  when: zulip_external_host | length == 0
+
+# -- Install docker-compose v2 if not present (same as SecPlatform) --
+- name: Check if docker-compose v2 is installed
+  command: "docker-compose version --short"
+  register: zulip_dc_check
+  changed_when: false
+  failed_when: false
+
+- name: Install docker-compose v2
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/v{{ zulip_compose_version | default('2.5.1') }}/docker-compose-linux-{{ ansible_architecture }}"
+    dest: "/usr/local/bin/docker-compose"
+    mode: '0755'
+    owner: root
+    group: root
+  when: zulip_dc_check.rc != 0
+
+# -- Enable podman socket (system) --
+- name: Enable system podman socket
+  systemd:
+    name: podman.socket
+    state: started
+    enabled: true
+
+# -- Create directories --
+- name: Create Zulip compose directory
+  file:
+    path: "{{ zulip_compose_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create Zulip data directories
+  file:
+    path: "{{ zulip_data_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - zulip
+    - postgresql-14
+    - rabbitmq
+    - redis
+
+# -- Generate .env with secrets --
+- name: Deploy Zulip .env
+  copy:
+    dest: "{{ zulip_compose_dir }}/.env"
+    content: |
+      ZULIP__POSTGRES_PASSWORD={{ zulip_postgres_password }}
+      ZULIP__MEMCACHED_PASSWORD={{ zulip_memcached_password }}
+      ZULIP__RABBITMQ_PASSWORD={{ zulip_rabbitmq_password }}
+      ZULIP__REDIS_PASSWORD={{ zulip_redis_password }}
+      ZULIP__SECRET_KEY={{ zulip_secret_key }}
+      ZULIP__EMAIL_PASSWORD={{ zulip_email_password | default('') }}
+    owner: root
+    group: root
+    mode: '0600'
+  notify: restart zulip
+
+# -- Deploy compose.yml --
+- name: Deploy Zulip compose.yml
+  template:
+    src: compose.yml.j2
+    dest: "{{ zulip_compose_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart zulip
+
+# -- Deploy compose.override.yml (settings + secrets) --
+- name: Deploy Zulip compose.override.yml
+  template:
+    src: compose.override.yml.j2
+    dest: "{{ zulip_compose_dir }}/compose.override.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart zulip
+
+# -- Create systemd service --
+- name: Deploy Zulip systemd service
+  template:
+    src: zulip-stack.service.j2
+    dest: /etc/systemd/system/zulip-stack.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart zulip
+
+# -- Enable and start --
+- name: Enable and start Zulip stack
+  service:
+    name: zulip-stack
+    state: started
+    enabled: true
+
+# -- Wait for Zulip to be ready --
+- name: Wait for Zulip to be ready
+  uri:
+    url: "http://127.0.0.1:{{ zulip_http_port }}/__heartbeat"
+    method: GET
+    status_code: [200]
+  register: zulip_ready
+  retries: 30
+  delay: 10
+  until: zulip_ready.status == 200
+  changed_when: false

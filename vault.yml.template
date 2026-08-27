@@ -54,3 +54,11 @@ iar_telegram_chat_id: "CHAT_ID_HERE"
 # Generate with: openssl rand -hex 32
 # Set in compose env (AGENT_RUNNER_SECRET) and agent-runner systemd service.
 vault_agent_runner_secret: "AGENT_RUNNER_SECRET_HERE"
+# ── Zulip secrets ──────────────────────────────────────────
+# Generate with: python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+zulip_postgres_password: "CHANGE_ME"
+zulip_memcached_password: "CHANGE_ME"
+zulip_rabbitmq_password: "CHANGE_ME"
+zulip_redis_password: "CHANGE_ME"
+zulip_secret_key: "CHANGE_ME"
+zulip_email_password: ""
