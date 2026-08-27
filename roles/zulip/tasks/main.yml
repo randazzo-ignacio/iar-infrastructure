@@ -8,6 +8,10 @@
 #
 # We use podman compose (docker-compose v2 as provider) following the same
 # pattern as SecPlatform: system podman socket, SELinux :z labels on volumes.
+#
+# NOTE: docker-compose v2.5.1 does not support 'environment' in secrets
+# definitions or 'attach'/'app_protocol' in service definitions.
+# We write secrets to individual files and reference them with 'file:'.
 
 # -- Validate required variables --
 - name: Fail if zulip_postgres_password is not set
@@ -70,20 +74,22 @@
     - rabbitmq
     - redis
 
-# -- Generate .env with secrets --
-- name: Deploy Zulip .env
+# -- Write secret files (docker-compose v2.5.1 needs file-based secrets) --
+- name: Write Zulip secret files
   copy:
-    dest: "{{ zulip_compose_dir }}/.env"
-    content: |
-      ZULIP__POSTGRES_PASSWORD={{ zulip_postgres_password }}
-      ZULIP__MEMCACHED_PASSWORD={{ zulip_memcached_password }}
-      ZULIP__RABBITMQ_PASSWORD={{ zulip_rabbitmq_password }}
-      ZULIP__REDIS_PASSWORD={{ zulip_redis_password }}
-      ZULIP__SECRET_KEY={{ zulip_secret_key }}
-      ZULIP__EMAIL_PASSWORD={{ zulip_email_password | default('') }}
+    dest: "{{ zulip_compose_dir }}/.env-{{ item.key }}"
+    content: "{{ item.value }}"
     owner: root
     group: root
     mode: '0600'
+  loop:
+    - { key: "postgres", value: "{{ zulip_postgres_password }}" }
+    - { key: "memcached", value: "{{ zulip_memcached_password }}" }
+    - { key: "rabbitmq", value: "{{ zulip_rabbitmq_password }}" }
+    - { key: "redis", value: "{{ zulip_redis_password }}" }
+    - { key: "secret-key", value: "{{ zulip_secret_key }}" }
+    - { key: "email", value: "{{ zulip_email_password | default('') }}" }
+  no_log: true
   notify: restart zulip
 
 # -- Deploy compose.yml --

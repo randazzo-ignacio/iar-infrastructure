@@ -1,20 +1,24 @@
 ---
 # Zulip compose.override.yml -- settings and secrets configuration
 # This file provides the environment-specific settings for our deployment.
+#
+# NOTE: docker-compose v2.5.1 does not support 'environment' in secrets
+# definitions. We use 'file' instead and write the secrets to files in the
+# .env file (loaded by docker-compose automatically).
 
 secrets:
   zulip__postgres_password:
-    environment: "ZULIP__POSTGRES_PASSWORD"
+    file: ".env-postgres"
   zulip__memcached_password:
-    environment: "ZULIP__MEMCACHED_PASSWORD"
+    file: ".env-memcached"
   zulip__rabbitmq_password:
-    environment: "ZULIP__RABBITMQ_PASSWORD"
+    file: ".env-rabbitmq"
   zulip__redis_password:
-    environment: "ZULIP__REDIS_PASSWORD"
+    file: ".env-redis"
   zulip__secret_key:
-    environment: "ZULIP__SECRET_KEY"
+    file: ".env-secret-key"
   zulip__email_password:
-    environment: "ZULIP__EMAIL_PASSWORD"
+    file: ".env-email"
 
 services:
   zulip:
@@ -32,9 +36,6 @@ services:
       SETTING_EMAIL_PORT: "25"
       SETTING_EMAIL_USE_SSL: "False"
       SETTING_EMAIL_USE_TLS: "False"
-
-      # Authentication: EmailAuthBackend (default). Can add more later.
-      # ZULIP_AUTH_BACKENDS: "EmailAuthBackend"
 
       # Disable push notifications service (self-hosted, no mobile push)
       SETTING_ZULIP_SERVICE_PUSH_NOTIFICATIONS: "False"
