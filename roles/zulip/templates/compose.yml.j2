@@ -78,7 +78,7 @@ services:
       SETTING_REDIS_HOST: "redis"
       SETTING_EXTERNAL_HOST: "{{ zulip_external_host }}"
       SETTING_ZULIP_ADMINISTRATOR: "{{ zulip_admin_email }}"
-      LOADBALANCER_IPS: "{{ zulip_loadbalancer_ips | default('10.66.0.0/16') }}"
+      LOADBALANCER_IPS: "{{ zulip_loadbalancer_ips | default('10.89.0.0/16,10.66.0.0/16') }}"
       SETTING_EMAIL_HOST: ""
       SETTING_EMAIL_PORT: "25"
       SETTING_EMAIL_USE_SSL: "False"

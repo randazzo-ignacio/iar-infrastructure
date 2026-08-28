@@ -77,7 +77,7 @@
 
 # -- Write secret files (no trailing newline -- docker secrets must not have one) --
 - name: Write Zulip secret files
-  shell: "printf '%s' '{{ item.value }}' > {{ zulip_compose_dir }}/.env-{{ item.key }} && chmod 600 {{ zulip_compose_dir }}/.env-{{ item.key }}"
+  shell: "printf '%s' '{{ item.value }}' > {{ zulip_compose_dir }}/.env-{{ item.key }} && chmod 644 {{ zulip_compose_dir }}/.env-{{ item.key }}"
   loop:
     - { key: "postgres", value: "{{ zulip_postgres_password }}" }
     - { key: "memcached", value: "{{ zulip_memcached_password }}" }
@@ -93,6 +93,15 @@
   template:
     src: compose.yml.j2
     dest: "{{ zulip_compose_dir }}/compose.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart zulip
+
+- name: Deploy Zulip compose.override.yml
+  template:
+    src: compose.override.yml.j2
+    dest: "{{ zulip_compose_dir }}/compose.override.yml"
     owner: root
     group: root
     mode: '0644'

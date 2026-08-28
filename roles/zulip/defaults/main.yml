@@ -34,3 +34,7 @@ zulip_email_password: ""
 # Whether to create bot accounts via the API after first deploy
 zulip_create_bots: false
 zulip_bot_api_key: ""  # set in vault if managing bots externally
+# Trusted reverse proxy IPs (comma-separated, no spaces)
+# Caddy on rammstein (10.66.0.1) proxies over WireGuard to sophon
+# Podman internal network (10.89.x.x) is also trusted for healthchecks
+zulip_loadbalancer_ips: "10.89.0.0/16,10.66.0.0/16"
