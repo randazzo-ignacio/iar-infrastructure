@@ -176,6 +176,9 @@
     group: restic
     mode: '0600'
   when: inventory_hostname in ['rammstein', 'sophon']
+      # NOTE: overwrites the file each run; the root push key task
+      # re-adds its key after, so state converges but both report
+      # changed. Deterministic order, small file -- acceptable.
 
 - name: Initialize restic repo on SFTP target hosts
   command: "{{ restic_binary }} --repo /home/restic/backups init"
