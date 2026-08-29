@@ -187,6 +187,68 @@
   when: inventory_hostname in ['rammstein', 'sophon']
 
 # ============================================================
+# SFTP PUSH PREREQUISITES (client hosts only)
+# The backup service runs as root and pushes to the remote repo
+# via sftp. Root needs: an ssh key authorized on the target, and
+# the target host key in known_hosts. Without these the nightly
+# service fails silently (host key verification / permission denied).
+# ============================================================
+
+- name: Generate root ssh key for restic sftp push (if missing)
+  community.crypto.openssh_keypair:
+    path: /root/.ssh/id_ed25519
+    type: ed25519
+    comment: "restic@{{ inventory_hostname }}"
+    force: false
+  when: restic_backup_paths | length > 0
+
+- name: Check if root push key exists
+  stat:
+    path: /root/.ssh/id_ed25519.pub
+  register: restic_push_key_stat
+  when: restic_backup_paths | length > 0
+
+- name: Read root public key for restic push
+  slurp:
+    path: /root/.ssh/id_ed25519.pub
+  register: restic_push_pubkey
+  when:
+    - restic_backup_paths | length > 0
+    - restic_push_key_stat.stat.exists
+
+- name: Authorize root push key on SFTP target hosts
+  ansible.posix.authorized_key:
+    user: restic
+    key: "{{ restic_push_pubkey.content | b64decode }}"
+    state: present
+  delegate_to: "{{ restic_remote_host }}"
+  when:
+    - restic_backup_paths | length > 0
+    - restic_remote_host is defined
+    - restic_push_pubkey.content is defined
+  ignore_errors: true
+
+- name: Scan target host key
+  command: "ssh-keyscan -t ed25519 {{ restic_remote_host_ip }}"
+  register: restic_host_key_scan
+  changed_when: false
+  failed_when: false
+  when:
+    - restic_backup_paths | length > 0
+    - restic_remote_host_ip is defined
+
+- name: Add target host key to root known_hosts (idempotent lineinfile)
+  ansible.builtin.lineinfile:
+    path: /root/.ssh/known_hosts
+    line: "{{ restic_host_key_scan.stdout_lines[0] }}"
+    state: present
+    create: true
+  when:
+    - restic_backup_paths | length > 0
+    - restic_remote_host_ip is defined
+    - restic_host_key_scan.stdout_lines | length > 0
+
+# ============================================================
 # SYSTEMD SERVICES + TIMERS (client hosts only)
 # ============================================================
 

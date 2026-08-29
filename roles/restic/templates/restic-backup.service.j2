@@ -10,6 +10,8 @@ Wants=mnt-backups.mount
 [Service]
 Type=oneshot
 Environment=RESTIC_PASSWORD_FILE={{ restic_password_file }}
+Environment=HOME=/root
+Environment=XDG_CACHE_HOME=/root/.cache
 
 ExecStart=/bin/sh -c '\
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}

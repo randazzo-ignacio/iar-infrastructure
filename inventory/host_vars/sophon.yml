@@ -76,7 +76,7 @@ git_mirror_host: rammstein
 # Restic backup
 restic_primary_repo: "/home/restic/backups"
 restic_backup_paths:
-  - /home/nacho/repos
+  - /var/home/nacho/repos
   - /home/nacho/.config
 # SecPlatform -- multi-tenant SaaS (podman compose)
 secplatform_enabled: true

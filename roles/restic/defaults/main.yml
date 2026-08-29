@@ -52,3 +52,8 @@ restic_keep_yearly: 1
 
 # -- Binary --
 restic_binary: "/usr/bin/restic"
+# SFTP push target (for the root-user push from the systemd service).
+# restic_remote_repo is the full sftp: URL; these two are the parsed
+# parts used by the ssh-key/known_hosts setup tasks.
+restic_remote_host: rammstein
+restic_remote_host_ip: 10.66.0.1
