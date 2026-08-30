@@ -11,14 +11,16 @@ services:
     restart: unless-stopped
     stop_grace_period: {{ frigate_stop_grace_period }}
     image: {{ frigate_image }}
-    # GPU access via privileged mode (all devices incl. /dev/nvidia*).
-    # NOTE: the previous "nvidia.com/gpu=all" CDI device spec was never
-    # functional via docker-compose v2.5.1 (it rejects CDI specs with
-    # "stat nvidia.com/gpu=all: no such file or directory") -- it was
-    # masked by privileged:true since Jul 19. Discovered 2026-08-30
-    # when the first full recreate (ansible handler down+up) exposed
-    # it. privileged already grants /dev/nvidia* access, so the CDI
-    # line is removed rather than worked around.
+    # GPU via CDI spec (nvidia.com/gpu=all). Requires docker-compose
+    # v2.24+ -- the installed v2.5.1 rejected CDI specs outright
+    # ("stat nvidia.com/gpu=all: no such file or directory"), which
+    # surfaced on first full recreate 2026-08-30 (the Jul 19 container
+    # had been created by podman-compose python, which silently drops
+    # the spec -- GPU access was actually coming from privileged:true
+    # + host driver libs, and broke on the Aug 12 driver upgrade).
+    # docker-compose upgraded to v2.39.1 on sophon 2026-08-30.
+    devices:
+      - nvidia.com/gpu=all
     shm_size: "{{ frigate_shm_size }}"
     volumes:
       - /etc/localtime:/etc/localtime:ro
