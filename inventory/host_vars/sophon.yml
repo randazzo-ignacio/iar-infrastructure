@@ -50,7 +50,7 @@ frigate_cameras:
     roles: [detect, record, audio]
   exterior_2:
     friendly_name: "Exterior 2"
-    rtsp_host: "192.168.0.102"
+    rtsp_host: "192.168.2.102"
     rtsp_path: "/ch0"
     roles: [detect, record, audio]
   exterior_3:
