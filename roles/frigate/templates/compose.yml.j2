@@ -11,8 +11,14 @@ services:
     restart: unless-stopped
     stop_grace_period: {{ frigate_stop_grace_period }}
     image: {{ frigate_image }}
-    devices:
-      - nvidia.com/gpu=all
+    # GPU access via privileged mode (all devices incl. /dev/nvidia*).
+    # NOTE: the previous "nvidia.com/gpu=all" CDI device spec was never
+    # functional via docker-compose v2.5.1 (it rejects CDI specs with
+    # "stat nvidia.com/gpu=all: no such file or directory") -- it was
+    # masked by privileged:true since Jul 19. Discovered 2026-08-30
+    # when the first full recreate (ansible handler down+up) exposed
+    # it. privileged already grants /dev/nvidia* access, so the CDI
+    # line is removed rather than worked around.
     shm_size: "{{ frigate_shm_size }}"
     volumes:
       - /etc/localtime:/etc/localtime:ro
