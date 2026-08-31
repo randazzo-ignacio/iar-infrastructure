@@ -143,3 +143,33 @@
     state: started
     enabled: true
   loop: "{{ iar_agents }}"
+# -- 5. Failure notification hook (the tripwire law) --
+# Any unit that can stop an agent's heartbeat (tripwire, timeout,
+# crash) must reach a human when it fires. 2026-08-31: the tripwire
+# blocked 11 consecutive cycles for 1h50m and nobody was watching.
+
+- name: Install agent failure notify script
+  copy:
+    src: agent-failure-notify.sh
+    dest: /usr/local/bin/agent-failure-notify.sh
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install agent failure template unit
+  template:
+    src: agent-failure@.service.j2
+    dest: /etc/systemd/system/agent-failure@.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Add OnFailure hook to agent service units
+  lineinfile:
+    path: "/etc/systemd/system/iar-{{ item.name }}.service"
+    line: "OnFailure=agent-failure@%n.service"
+    insertafter: "^TimeoutStartSec"
+    regexp: "^OnFailure=.*$"
+  loop: "{{ iar_agents }}"
+  notify: reload systemd

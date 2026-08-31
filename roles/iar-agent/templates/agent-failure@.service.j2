@@ -1,0 +1,11 @@
+[Unit]
+Description=i.ar agent failure notification (%i)
+# Template unit: OnFailure=agent-failure@%n.service in agent units
+# triggers this with the failed unit name as instance (%i).
+
+[Service]
+Type=oneshot
+# %i = failed unit name (from OnFailure=agent-failure@%n)
+ExecStart=/usr/local/bin/agent-failure-notify.sh %i
+# The hook must never recurse or block: if IT fails, stay silent
+# (logger lines are visible in journalctl -t agent-failure).
