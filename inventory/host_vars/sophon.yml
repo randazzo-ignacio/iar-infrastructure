@@ -78,6 +78,10 @@ restic_primary_repo: "/home/restic/backups"
 restic_backup_paths:
   - /var/home/nacho/repos
   - /home/nacho/.config
+  # Frigate recordings (Nacho's green light 2026-08-31: 2x8TB RAID1
+  # external + restic role exist -- back the storage up at no
+  # practical cost. 76GB current, 1.5T free on this disk.)
+  - /home/nacho/containers/frigate/storage
 # SecPlatform -- multi-tenant SaaS (podman compose)
 secplatform_enabled: true
 secplatform_repo_url: "git@10.66.0.1:/home/git/repos/iar-prod.git"

@@ -2,7 +2,12 @@
 Description=Restic weekly check timer
 
 [Timer]
+# The 2026-08-31 lock race: check (Persistent catch-up) and backup
+# both fired at 00:00:01; the check grabbed the repo lock first and
+# the backup chain died (exit 11, no retry, no backup that day).
+# Move the check off midnight and stagger it.
 OnCalendar={{ restic_check_on_calendar }}
+RandomizedDelaySec=30m
 Persistent=true
 
 [Install]

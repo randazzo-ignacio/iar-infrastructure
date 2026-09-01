@@ -12,6 +12,16 @@ tls:
 ffmpeg:
   hwaccel_args: preset-nvidia
 
+# Detection on GPU (Nacho's resource model, 2026-08-31: his LLMs
+# need ~80GB RAM so agents run 90% CPU / 10% GPU -- the 3080 is
+# free for detection. CPU detectors slow frigate AND the agents.)
+detectors:
+  tensorrt:
+    type: tensorrt
+model:
+  width: {{ frigate_model_width | default(640) }}
+  height: {{ frigate_model_height | default(640) }}
+
 record:
   enabled: true
   continuous:
