@@ -142,3 +142,18 @@
     mode: '0755'
   loop: "{{ git_bare_repos }}"
   when: git_mirror_target | length > 0
+# -- Post-receive hook root guard (2026-09-01, aria cycle 74) --
+# File-path pushes to the bare run as root (root owns the clone on sophon).
+# Root has no key on the mirror target; the git user does. Re-exec the
+# mirror push as the git user so the mirror leg actually fires.
+- name: Patch post-receive hook to re-exec mirror as git user when root
+  ansible.builtin.lineinfile:
+    path: "{{ git_repo_root }}/{{ item }}.git/hooks/post-receive"
+    insertafter: "^#!/bin/bash"
+    line: |
+      if [ "$(id -u)" -eq 0 ]; then
+        exec runuser -u git -- /usr/bin/env GIT_DIR="$(pwd)" git push --quiet {{ git_mirror_target }}/$(basename "$(pwd)") --all 2>/dev/null || true
+      fi
+    firstmatch: true
+  loop: "{{ git_bare_repos }}"
+  when: git_mirror_target | length > 0
