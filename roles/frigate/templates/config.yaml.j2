@@ -15,12 +15,26 @@ ffmpeg:
 # Detection on GPU (Nacho's resource model, 2026-08-31: his LLMs
 # need ~80GB RAM so agents run 90% CPU / 10% GPU -- the 3080 is
 # free for detection. CPU detectors slow frigate AND the agents.)
+#
+# 2026-09-01: TensorRT detector type is REMOVED on amd64 in frigate
+# 0.17 (ImportError at startup). The GPU path is the ONNX detector
+# with CUDA EP. Frigate auto-enables CUDA graph capture for the
+# default ssd model_type, which fails on the mmdeploy ssdlite
+# (CPU-only nodes). The fix: YOLOv9-s 640x640 ONNX exported for
+# frigate (negoti8za/frigate-yolo), fully CUDA-partitionable.
+# Verified live on sophon: 10ms inference, detector on GPU.
 detectors:
-  tensorrt:
-    type: tensorrt
+  onnx:
+    type: onnx
+    device: cuda
 model:
   width: {{ frigate_model_width | default(640) }}
   height: {{ frigate_model_height | default(640) }}
+  input_tensor: nchw
+  input_pixel_format: rgb
+  input_dtype: float
+  path: {{ frigate_model_path | default('/config/model_cache/yolov9_s_640_frigate_cuda.onnx') }}
+  labelmap_path: /labelmap/coco-80.txt
 
 record:
   enabled: true
