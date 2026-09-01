@@ -2,6 +2,10 @@
 Description=Restic backup service
 After=network-online.target
 Wants=network-online.target
+# Tripwire law: any instrument that can stop the system must reach a
+# human when it fires. These units failed twice (2026-09-01) with zero
+# human-visible signal. Hook shared with aria-cycle.service.
+OnFailure=agent-failure@%n.service
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}
 After=mnt-backups.mount
 Wants=mnt-backups.mount
