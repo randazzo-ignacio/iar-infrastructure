@@ -152,7 +152,12 @@
     insertafter: "^#!/bin/bash"
     line: |
       if [ "$(id -u)" -eq 0 ]; then
-        exec runuser -u git -- /usr/bin/env GIT_DIR="$(pwd)" git push --quiet {{ git_mirror_target }}/$(basename "$(pwd)") --all 2>/dev/null || true
+        # Root push: heal ownership first (root receive-pack leaves root-owned
+        # objects/refs that break later git-user operations and poison the
+        # aria-cycle tripwire when they land in the nacho clone), then mirror
+        # as the git user (root has no key on the mirror target).
+        find . -user root -exec chown {{ git_repo_user }}:{{ git_repo_user }} {} + 2>/dev/null || true
+        exec runuser -u {{ git_repo_user }} -- /usr/bin/env GIT_DIR="$(pwd)" git push --quiet {{ git_mirror_target }}/$(basename "$(pwd)") --all 2>/dev/null || true
       fi
     firstmatch: true
   loop: "{{ git_bare_repos }}"
