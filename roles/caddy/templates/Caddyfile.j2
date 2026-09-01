@@ -17,7 +17,11 @@
     reverse_proxy {{ site.target }}
     encode gzip zstd
 {% elif site.type == 'proxy' %}
+{% if site.backend_ip is defined %}
+    reverse_proxy {{ site.backend_ip }}:{{ site.backend_port }}
+{% else %}
     reverse_proxy {{ hostvars[site.backend_host]['wg_ip'] }}:{{ site.backend_port }}
+{% endif %}
     encode gzip zstd
 {% elif site.type == 'redirect' %}
     redir {{ site.target }} permanent

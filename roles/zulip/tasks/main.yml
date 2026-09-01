@@ -126,8 +126,10 @@
 
 # -- Wait for Zulip to be ready --
 - name: Wait for Zulip to be ready
+  # Zulip 12 removed /__heartbeat (404). /api/v1/server_settings is the
+  # documented readiness endpoint -- returns 200 once the app is serving.
   uri:
-    url: "http://127.0.0.1:{{ zulip_http_port }}/__heartbeat"
+    url: "http://127.0.0.1:{{ zulip_http_port }}/api/v1/server_settings"
     method: GET
     status_code: [200]
   register: zulip_ready

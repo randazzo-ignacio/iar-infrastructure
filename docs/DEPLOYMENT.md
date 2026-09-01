@@ -103,7 +103,6 @@ ssh rammstein 'wg show wg0'
 ### 3.3 Verify Web Services
 ```bash
 curl -I https://randazzo.ar
-curl -I https://i.ar
 curl -I https://camaras.randazzo.ar
 ```
 
@@ -161,4 +160,4 @@ Individual roles can be run independently:
 | `playbooks/pass.yml` | pass password manager | yoga |
 | `playbooks/restic.yml` | Restic backup setup | rammstein, sophon, yoga |
 | `playbooks/portfolio-page.yml` | Deploy portfolio page | web_servers |
-| `playbooks/static-page.yml` | Deploy i.ar landing page | web_servers |
+| `playbooks/static-page.yml` | Deploy i.ar landing page (DECOMMISSIONED 2026-09-01) | web_servers |

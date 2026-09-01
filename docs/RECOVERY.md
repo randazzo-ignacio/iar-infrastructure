@@ -17,7 +17,6 @@
 
 3. **Update DNS** at your registrar:
    - randazzo.ar -> new proxy IP
-   - i.ar -> new proxy IP
 
 4. **Provision admin users** on each new server (manual, pre-Ansible):
    - Create per-host admin user with passwordless sudo
@@ -42,7 +41,6 @@
    ssh rammstein 'wg show wg0'
    # Web services
    curl -I https://randazzo.ar
-   curl -I https://i.ar
    # Ollama
    ssh sophon 'curl http://10.66.0.5:11434/api/tags'
    ```
@@ -108,7 +106,6 @@ ssh rammstein 'wg show wg0'
 
 # Check web services
 curl -I https://randazzo.ar
-curl -I https://i.ar
 curl -I https://camaras.randazzo.ar
 
 # Check Ollama

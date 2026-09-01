@@ -78,23 +78,11 @@
     enabled: true
     daemon_reload: true
 
-# -- Add Caddy reverse proxy for Radicale --
-- name: Add Radicale site to Caddy
-  blockinfile:
-    path: "{{ caddy_config_path }}"
-    marker: "# {mark} ANSIBLE MANAGED -- Radicale"
-    block: |
-      {{ radicale_domain }} {
-          reverse_proxy {{ radicale_host }}:{{ radicale_port }}
-          encode gzip zstd
-          header {
-              Strict-Transport-Security "max-age=31536000; includeSubDomains"
-              X-Content-Type-Options nosniff
-              X-Frame-Options DENY
-              Referrer-Policy no-referrer
-          }
-      }
-  notify: reload caddy
+# NOTE 2026-09-01: the Caddy route for caldav.randazzo.ar moved to
+# caddy_sites in host_vars/rammstein.yml (type: proxy, backend_ip 127.0.0.1:5232).
+# The caddy role regenerates the full Caddyfile from caddy_sites, so a
+# blockinfile here would be wiped on every caddy run (same bug the wiki role
+# had). Do not re-add.
 
 # -- SSH setup for radicale user (to push to git bare repo) --
 - name: Ensure .ssh directory exists for radicale user

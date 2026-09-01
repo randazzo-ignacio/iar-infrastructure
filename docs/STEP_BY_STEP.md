@@ -191,7 +191,6 @@ ssh rammstein "wg show wg0"
 ### Check Caddy:
 ```bash
 curl -I https://randazzo.ar
-curl -I https://i.ar
 ```
 
 ### Check Ollama (on sophon):

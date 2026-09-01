@@ -92,17 +92,16 @@ restic_remote_paths:
 # Fail closed if the NAS is not mounted (repo would land on root disk)
 restic_primary_mount: mnt-nas.mount
 
-# SecPlatform -- multi-tenant SaaS (podman compose)
-secplatform_enabled: true
-secplatform_repo_url: "git@10.66.0.1:/home/git/repos/iar-prod.git"
-secplatform_repo_branch: "main"
-secplatform_deploy_dir: "/home/nacho/repos/iar-prod"
-secplatform_env: "prod"
-secplatform_rebuild: true
-# Agent Runner -- host-side service bridging BFF and iar.sh
-secplatform_agent_runner_enabled: true
-secplatform_agent_runner_port: 4700
-secplatform_agent_runner_secret: "{{ vault_agent_runner_secret }}"
+# SecPlatform -- DECOMMISSIONED 2026-09-01.
+# The i.ar product (frontend + SecPlatform SaaS) was handed off to a friend
+# who hosts it independently. We no longer host or deploy anything for i.ar.
+# On sophon: sp-prod containers removed, secplatform-prod.service and
+# agent-runner.service disabled. On rammstein: i.ar/app.i.ar/app-bo.i.ar/
+# auth.i.ar removed from caddy_sites. Role + playbooks/secplatform.yml kept
+# in the repo for history. DNS for the i.ar domains still points at
+# Cloudflare -> rammstein until the new owner repoints it.
+secplatform_enabled: false
+secplatform_agent_runner_enabled: false
 # Zulip chat server (agora.randazzo.ar)
 zulip_enabled: true
 zulip_external_host: "agora.randazzo.ar"

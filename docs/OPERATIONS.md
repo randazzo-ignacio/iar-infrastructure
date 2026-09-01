@@ -453,7 +453,6 @@ redirects.
 |--------|------|---------|
 | randazzo.ar | static | /var/www/randazzo.ar |
 | randazzo.com.ar | redirect | -> https://randzzo.ar |
-| i.ar | static | /var/www/i.ar |
 | camaras.randazzo.ar | proxy | sophon:8971 (Frigate) |
 
 ### Checking status
@@ -464,7 +463,6 @@ ssh rammstein 'systemctl status caddy'
 
 # Test a domain
 curl -I https://randazzo.ar
-curl -I https://i.ar
 curl -I https://camaras.randazzo.ar
 
 # View Caddyfile
@@ -696,7 +694,6 @@ ssh rammstein 'wg show wg0'
 
 # Web services
 curl -I https://randazzo.ar
-curl -I https://i.ar
 curl -I https://camaras.randazzo.ar
 
 # Git repos
