@@ -38,3 +38,8 @@ zulip_bot_api_key: ""  # set in vault if managing bots externally
 # Caddy on rammstein (10.66.0.1) proxies over WireGuard to sophon
 # Podman internal network (10.89.x.x) is also trusted for healthchecks
 zulip_loadbalancer_ips: "10.89.0.0/16,10.66.0.0/16"
+# Redis data dir ownership: redis:alpine runs as uid 999, gid 1000 on the
+# host (matches the compose stack). Root ownership here breaks bgsave ->
+# MISCONF -> all redis writes rejected -> Zulip API 500s (2026-09-01).
+zulip_redis_uid: 999
+zulip_redis_gid: 1000

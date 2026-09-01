@@ -64,16 +64,16 @@
 
 - name: Create Zulip data directories
   file:
-    path: "{{ zulip_data_dir }}/{{ item }}"
+    path: "{{ zulip_data_dir }}/{{ item.path }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
     mode: '0755'
   loop:
-    - zulip
-    - postgresql-14
-    - rabbitmq
-    - redis
+    - { path: zulip, owner: root, group: root }
+    - { path: postgresql-14, owner: root, group: root }
+    - { path: rabbitmq, owner: root, group: root }
+    - { path: redis, owner: "{{ zulip_redis_uid | string }}", group: "{{ zulip_redis_gid | string }}" }
 
 # -- Write secret files (no trailing newline -- docker secrets must not have one) --
 - name: Write Zulip secret files
