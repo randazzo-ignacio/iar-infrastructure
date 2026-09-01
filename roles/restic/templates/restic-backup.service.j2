@@ -15,17 +15,17 @@ Environment=XDG_CACHE_HOME=/root/.cache
 
 ExecStart=/bin/sh -c '\
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_local_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_local_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
 {% endif %}
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_primary_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_remote_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }}'
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_primary_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_remote_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }}'
 
 ExecStartPost=/bin/sh -c '\
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_local_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true && \
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_local_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true && \
 {% endif %}
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_primary_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true && \
-{{ restic_binary }} --lock-wait {{ restic_lock_wait | default(600) }} --repo {{ restic_remote_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true'
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_primary_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true && \
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_remote_repo }} forget --keep-daily {{ restic_keep_daily }} --keep-weekly {{ restic_keep_weekly }} --keep-monthly {{ restic_keep_monthly }} --keep-yearly {{ restic_keep_yearly }} --prune 2>/dev/null || true'
 
 [Install]
 WantedBy=multi-user.target

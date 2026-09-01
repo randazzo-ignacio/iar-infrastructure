@@ -44,10 +44,10 @@ restic_backup_excludes:
 restic_backup_on_calendar: "daily"
 restic_check_on_calendar: "Sun *-*-* 03:00:00"
 
-# Lock wait (seconds) -- how long backup/check waits for a busy repo
-# instead of dying (the 2026-08-31 race: check held the lock, backup
-# exited 11 with no retry).
-restic_lock_wait: 600
+# Retry lock (duration, e.g. 10m) -- how long backup/check retries a
+# busy repo instead of dying (the 2026-08-31 race: check held the
+# lock, backup exited 11 with no retry). restic 0.19 flag: --retry-lock
+restic_retry_lock: "10m"
 
 # -- Retention --
 restic_keep_daily: 7
