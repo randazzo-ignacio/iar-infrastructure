@@ -6,6 +6,12 @@
 # checks out the source, runs rake build, and Caddy serves
 # the output.
 
+# Enable flag -- opt-in, fail closed.
+# The wiki depends on ~/repos/wiki existing on the control
+# node (bare repo is created dynamically by git-repo scan).
+# Enable only after that repo is created and pushed.
+wiki_enabled: false
+
 # -- Domain --
 wiki_domain: "wiki.randazzo.ar"
 

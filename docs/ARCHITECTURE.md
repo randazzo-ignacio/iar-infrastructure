@@ -12,7 +12,7 @@
     │  caldav.randazzo.ar│                    │  app-bo.i.ar (SecPlatform) │
     │  (→redirect)       │                    │  auth.i.ar (Keycloak)      │
     │                    │                    │  camaras.randazzo.ar       │
-    │                    │                    │  wiki.randazzo.ar          │
+    │                    │                    │  wiki.randazzo.ar (off)    │
     ▼                    ▼                    ▼                            │
 ┌──────────────────────────────────────────────────────────────────────┐  │
 │  rammstein (sole VPS)                                                │  │
@@ -24,10 +24,10 @@
 │  Caddy proxy: auth.i.ar -> sophon:8080 (Keycloak)                   │  │
 │  Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)           │  │
 │  Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)        │  │
-│  Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build               │
+│  Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build (DISABLED)    │  │
 │  Caddy proxy: agora.randazzo.ar -> sophon:8090 (Zulip)             │  │
 │  Radicale CalDAV server (localhost:5232)                             │  │
-│  Wiki build (ruby + pandoc + pagefind, post-receive hook)            │  │
+│  Wiki build (ruby + pandoc + pagefind) -- DISABLED (wiki_enabled)    │  │
 │  Git bare repos (auto-discovered, mirrors to sophon)                │  │
 │  Restic remote target (SFTP, restic user)                            │  │
 │  WireGuard hub: 10.66.0.1                                            │  │
@@ -55,7 +55,7 @@
 
 | Host | WG IP | Domain | Role | Hardware |
 |------|-------|--------|------|----------|
-| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, app.i.ar (proxy), app-bo.i.ar (proxy), auth.i.ar (proxy), camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy), wiki.randazzo.ar (static) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV, wiki build | VPS 2c/4GB, Fedora 44 |
+| rammstein | 10.66.0.1 | randazzo.ar, randazzo.com.ar (redirect), i.ar, app.i.ar (proxy), app-bo.i.ar (proxy), auth.i.ar (proxy), camaras.randazzo.ar (proxy), caldav.randazzo.ar (proxy), wiki.randazzo.ar (static, disabled) | Caddy, WG hub, git bare repos, restic remote target, Radicale CalDAV, wiki build (disabled) | VPS 2c/4GB, Fedora 44 |
 | yoga | 10.66.0.4 | (none) | Laptop (Silverblue), pass client, restic backup client | Intel Core Ultra |
 | sophon | 10.66.0.5 | (none, proxied via rammstein) | Ollama GPU, Frigate NVR, SecPlatform, Zulip, i.ar agents, git bare repo mirror, restic local target | 12c/96GB, RTX 3080 |
 
@@ -85,9 +85,9 @@
 - Caddy proxy: auth.i.ar -> sophon:8080 (Keycloak OIDC)
 - Caddy proxy: camaras.randazzo.ar -> sophon:8971 (Frigate)
 - Caddy proxy: caldav.randazzo.ar -> localhost:5232 (Radicale)
-- Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build (wiki)
+- Caddy static: wiki.randazzo.ar -> /var/lib/wiki/build (wiki, DISABLED -- wiki_enabled=false)
 - Radicale CalDAV server (localhost only, Caddy provides TLS + public access)
-- Wiki build pipeline (ruby + kramdown + pandoc + pagefind, auto-build on push)
+- Wiki build pipeline (ruby + kramdown + pandoc + pagefind, auto-build on push) -- DISABLED (wiki_enabled=false, wiki.git not created yet; enable when i.ar/agora content is ready)
 - Caddy proxy: agora.randazzo.ar -> sophon:8090 (Zulip chat)
 - WireGuard hub -- all inter-server traffic routes through here
 - Git bare repos (auto-discovered from ~/repos/ on yoga, auto-mirror to sophon)

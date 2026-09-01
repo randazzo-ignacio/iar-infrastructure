@@ -11,4 +11,5 @@
   become: true
   roles:
     - role: wiki
+      when: wiki_enabled | default(false) | bool
       tags: [wiki]
