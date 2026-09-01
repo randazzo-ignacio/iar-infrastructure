@@ -6,6 +6,12 @@ Wants=network-online.target
 After=mnt-backups.mount
 Wants=mnt-backups.mount
 {% endif %}
+{% if restic_primary_mount is defined %}
+# Fail closed: no check (and no accidental repo creation) on an
+# unmounted primary filesystem.
+Requires={{ restic_primary_mount }}
+After={{ restic_primary_mount }}
+{% endif %}
 
 [Service]
 Type=oneshot

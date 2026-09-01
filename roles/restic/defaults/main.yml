@@ -1,31 +1,49 @@
 ---
 # roles/restic/defaults/main.yml
 #
-# Restic backup architecture:
+# Restic backup architecture (2026-09-01 redesign):
 #   yoga  -> local:   external drive at /mnt/backups
-#         -> primary: sftp to sophon (RAID1, over WireGuard)
+#         -> primary: sftp to sophon NVMe (over WireGuard)
 #         -> remote:  sftp to rammstein (offsite VPS)
-#   sophon -> primary: local disk (/home/restic/backups)
-#          -> remote:  sftp to rammstein (offsite)
+#   sophon -> primary: RAID1 NAS (md0 btrfs, /mnt/nas/restic/backups)
+#          -> remote:  sftp to rammstein (offsite, CRITICAL PATHS ONLY
+#             -- frigate recordings are too large for the 80G VPS disk
+#             and stay on the NAS; see restic_remote_paths)
 #   rammstein -> SFTP target only (no local backups)
 #
-# All targets are backed up in a single systemd service run.
+# 2026-09-01: sophon's old primary (/home/restic/backups on the NVMe --
+# same physical disk as the source data, protects against nothing but
+# rm -rf) retired. Repo migrated to the NAS via rsync. The NVMe repo
+# remains as yoga's sftp push target.
 
 # -- Local repository (optional, per-host) --
-# When set, an additional local restic repo is used (e.g. external drive).
 # restic_local_repo: "/mnt/backups"
 # restic_local_device: "/dev/sda1"
 # restic_local_mountpoint: "/mnt/backups"
 # restic_format_local_drive: false  # set true on first run only
 
 # -- Repository paths --
-# Primary (fast network target). Set per-host in host_vars.
-# On sophon: "/home/restic/backups" (local disk)
-# On yoga:   "sftp:restic@10.66.0.5:/home/restic/backups" (sophon over WG)
+# Primary (fast target). Set per-host in host_vars.
 restic_primary_repo: ""
 
 # Remote (offsite target). Same for all hosts.
 restic_remote_repo: "sftp:restic@10.66.0.1:/home/restic/backups"
+
+# -- Offsite path subset (optional, per-host) --
+# When the offsite target cannot hold the full backup set (rammstein
+# has 80G total; frigate storage alone is 76G+ and grows), set this to
+# the critical subset. Undefined = full set (backwards compatible).
+# restic_remote_paths:
+#   - /var/home/nacho/repos
+#   - /home/nacho/.config
+
+# -- Primary repo mount guard (optional, per-host) --
+# For path-based primary repos on a mounted filesystem (sophon's NAS):
+# the backup/check services Require this mount unit. If the mount is
+# down, they FAIL CLOSED instead of writing the repo onto the root
+# filesystem (the 2026-09-01 /dev/null incident made silent root-disk
+# writes a live concern, not a theoretical one).
+# restic_primary_mount: mnt-nas.mount
 
 # -- Restic password (MUST be set in vault) --
 # restic_password: "CHANGE_ME"
@@ -44,9 +62,9 @@ restic_backup_excludes:
 restic_backup_on_calendar: "daily"
 restic_check_on_calendar: "Sun *-*-* 03:00:00"
 
-# Retry lock (duration, e.g. 10m) -- how long backup/check retries a
-# busy repo instead of dying (the 2026-08-31 race: check held the
-# lock, backup exited 11 with no retry). restic 0.19 flag: --retry-lock
+# Retry lock (duration) -- how long backup/check retries a busy repo
+# instead of dying (the 2026-08-31 race: check held the lock, backup
+# exited 11 with no retry). restic 0.19 flag: --retry-lock
 restic_retry_lock: "10m"
 
 # -- Retention --
@@ -57,8 +75,7 @@ restic_keep_yearly: 1
 
 # -- Binary --
 restic_binary: "/usr/bin/restic"
+
 # SFTP push target (for the root-user push from the systemd service).
-# restic_remote_repo is the full sftp: URL; these two are the parsed
-# parts used by the ssh-key/known_hosts setup tasks.
 restic_remote_host: rammstein
 restic_remote_host_ip: 10.66.0.1

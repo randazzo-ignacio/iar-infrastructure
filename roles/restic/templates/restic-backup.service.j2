@@ -6,6 +6,12 @@ Wants=network-online.target
 After=mnt-backups.mount
 Wants=mnt-backups.mount
 {% endif %}
+{% if restic_primary_mount is defined %}
+# Fail closed: if the primary repo's filesystem is not mounted, do not
+# run -- otherwise the repo would be silently created on the root disk.
+Requires={{ restic_primary_mount }}
+After={{ restic_primary_mount }}
+{% endif %}
 
 [Service]
 Type=oneshot
@@ -13,12 +19,13 @@ Environment=RESTIC_PASSWORD_FILE={{ restic_password_file }}
 Environment=HOME=/root
 Environment=XDG_CACHE_HOME=/root/.cache
 
+{% set restic_offsite_paths = restic_remote_paths | default(restic_backup_paths) %}
 ExecStart=/bin/sh -c '\
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}
 {{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_local_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
 {% endif %}
-{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_primary_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }} && \
-{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_remote_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }}'
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_primary_repo }} backup {{ restic_backup_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }}{% if restic_offsite_paths | length > 0 %} && \
+{{ restic_binary }} --retry-lock {{ restic_retry_lock | default('10m') }} --repo {{ restic_remote_repo }} backup {{ restic_offsite_paths | join(' ') }} {{ restic_backup_excludes | map('regex_replace', '^(.*)$', '--exclude \\1') | join(' ') }}{% endif %}'
 
 ExecStartPost=/bin/sh -c '\
 {% if restic_local_repo is defined and restic_local_repo | length > 0 %}

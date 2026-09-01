@@ -190,6 +190,36 @@
   when: inventory_hostname in ['rammstein', 'sophon']
 
 # ============================================================
+# LOCAL PRIMARY REPO SETUP (path-based primaries, e.g. sophon NAS)
+# 2026-09-01: sophon's primary moved to the RAID1 NAS (md0 btrfs).
+# The repo was migrated from the retired NVMe location via rsync;
+# on fresh installs this section initializes it.
+# ============================================================
+
+- name: Ensure primary repo directory exists (path-based primary)
+  file:
+    path: "{{ restic_primary_repo }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  when:
+    - restic_backup_paths | length > 0
+    - restic_primary_repo | length > 0
+    - "'sftp:' not in restic_primary_repo"
+
+- name: Initialize primary restic repo (path-based primary)
+  command: "{{ restic_binary }} --repo {{ restic_primary_repo }} init"
+  args:
+    creates: "{{ restic_primary_repo }}/config"
+  environment:
+    RESTIC_PASSWORD: "{{ restic_password }}"
+  when:
+    - restic_backup_paths | length > 0
+    - restic_primary_repo | length > 0
+    - "'sftp:' not in restic_primary_repo"
+
+# ============================================================
 # SFTP PUSH PREREQUISITES (client hosts only)
 # The backup service runs as root and pushes to the remote repo
 # via sftp. Root needs: an ssh key authorized on the target, and
