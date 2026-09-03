@@ -28,15 +28,19 @@ caddy_sites:
     type: proxy
     backend_host: sophon
     backend_port: 8090
+  # i.ar landing page (static). RE-ENABLED 2026-09-03: the new owner of
+  # the i.ar product reverse-proxies to our infra for the landing page
+  # (SecPlatform itself is hosted by them, see host_vars/sophon.yml).
+  - domain: "i.ar"
+    type: static
+    root: "/var/www/i.ar"
 
 # Static sites -- both deployed by static-site role
 portfolio_page_root: "/var/www/randazzo.ar"
 portfolio_page_enabled: true
-# i.ar landing page -- DECOMMISSIONED 2026-09-01 (product handed off,
-# we no longer host anything for i.ar). See SecPlatform note in
-# host_vars/sophon.yml.
+# i.ar landing page -- see caddy_sites entry above.
 static_page_root: "/var/www/i.ar"
-tool_static_page_enabled: false
+tool_static_page_enabled: true
 
 # Git bare repos -- mirror to sophon
 git_mirror_target: "git@10.66.0.5:/home/git/repos"
